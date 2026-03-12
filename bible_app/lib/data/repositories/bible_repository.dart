@@ -1,109 +1,160 @@
-import '../models/bible_testament.dart';
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
+
+import '../models/bible_book.dart';
 import '../models/bible_chapter.dart';
+import '../models/bible_testament.dart';
 import '../models/bible_verse.dart';
-import '../services/bible_loader_service.dart';
 
-/// In-memory repository for the KJV Bible dataset.
+/// In-memory repository for all Bible translations.
 ///
-/// Call [init] once (e.g. in main.dart before runApp) to load and cache the
-/// parsed Bible. All lookup methods are synchronous after that.
+/// Call [init] once at startup (loads KJV eagerly). Additional translations are
+/// lazy-loaded via [ensureLoaded] — useful before switching translations in the
+/// reader, since each JSON file is ~7 MB.
 class BibleRepository {
-  BibleRepository({BibleLoaderService? loaderService})
-      : _loader = loaderService ?? BibleLoaderService();
+  // ── Translation registry ──────────────────────────────────────────────────
 
-  final BibleLoaderService _loader;
-  Bible? _bible;
+  /// All translations supported by this app.
+  /// Key = short code used by the app (cache key, UI label).
+  /// Value = Flutter asset path.
+  static const Map<String, String> availableTranslations = {
+    'KJV': 'assets/bible/kjv.json',
+    'NIV': 'assets/bible/niv.json',
+    'NLT': 'assets/bible/nlt.json',
+    'AMP': 'assets/bible/amp.json',
+  };
 
-  // ---------------------------------------------------------------------------
-  // Initialisation
-  // ---------------------------------------------------------------------------
+  static const Map<String, String> translationFullNames = {
+    'KJV': 'King James Version',
+    'NIV': 'New International Version',
+    'NLT': 'New Living Translation',
+    'AMP': 'Amplified Bible',
+  };
 
-  /// Loads the Bible asset and caches it. Safe to call multiple times;
-  /// subsequent calls are no-ops.
-  Future<void> init() async {
-    _bible ??= await _loader.load();
-  }
+  final Map<String, Bible> _cache = {};
 
-  Bible get _data {
-    if (_bible == null) {
-      throw StateError(
-        'BibleRepository has not been initialised. '
-        'Await BibleRepository.init() before accessing data.',
+  // ── Initialisation ────────────────────────────────────────────────────────
+
+  /// Eagerly loads KJV (the default translation) at app startup.
+  Future<void> init() => ensureLoaded('KJV');
+
+  /// Loads and caches [translation] if it is not already in memory.
+  ///
+  /// Safe to call multiple times for the same key — subsequent calls are
+  /// instant no-ops.
+  Future<void> ensureLoaded(String translation) async {
+    final key = translation.toUpperCase();
+    if (_cache.containsKey(key)) return;
+
+    final path = availableTranslations[key];
+    if (path == null) {
+      throw ArgumentError(
+        'Translation "$translation" is not configured. '
+        'Available: ${availableTranslations.keys.join(', ')}',
       );
     }
-    return _bible!;
+
+    final rawJson = await rootBundle.loadString(path);
+    // Use the app's cache key — not the JSON `translation` field — because
+    // some dataset files are incorrectly labelled (NLT/AMP say "KJV").
+    _cache[key] = Bible.fromJson(jsonDecode(rawJson) as Map<String, dynamic>);
   }
 
-  // ---------------------------------------------------------------------------
-  // Accessors
-  // ---------------------------------------------------------------------------
+  /// Whether [translation] has already been loaded into memory.
+  bool isLoaded(String translation) =>
+      _cache.containsKey(translation.toUpperCase());
 
-  /// The translation identifier, e.g. "KJV".
-  String get translation => _data.translation;
+  // ── Translation-level ─────────────────────────────────────────────────────
 
-  /// All testaments (Old Testament, New Testament).
-  List<BibleTestament> get testaments => List.unmodifiable(_data.testaments);
+  /// Returns all supported translation codes (e.g. ['KJV', 'NIV', 'NLT', 'AMP']).
+  List<String> getTranslations() => availableTranslations.keys.toList();
 
-  /// Returns a [BibleChapter] or null if not found.
-  ///
-  /// Example:
-  /// ```dart
-  /// final chapter = repo.getChapter('KJV', 'John', 3);
-  /// ```
-  /// The [translation] parameter is validated against the loaded translation
-  /// and throws if there is a mismatch.
+  /// Human-readable full name for a [translation] code.
+  String getFullName(String translation) =>
+      translationFullNames[translation.toUpperCase()] ?? translation;
+
+  // ── Testament-level ───────────────────────────────────────────────────────
+
+  /// All testaments for [translation]. Throws [StateError] if not loaded.
+  List<BibleTestament> getTestaments(String translation) =>
+      _require(translation).testaments;
+
+  // ── Book-level ────────────────────────────────────────────────────────────
+
+  /// All books belonging to [testamentName] in [translation].
+  List<BibleBook> getBooks(String translation, String testamentName) {
+    return _require(translation)
+        .testaments
+        .firstWhere(
+          (t) => t.name.toLowerCase() == testamentName.toLowerCase(),
+          orElse: () =>
+              throw ArgumentError('Testament "$testamentName" not found.'),
+        )
+        .books;
+  }
+
+  // ── Chapter-level ─────────────────────────────────────────────────────────
+
+  /// All [BibleChapter] objects for [bookName] in [translation].
+  List<BibleChapter> getChapters(String translation, String bookName) =>
+      List.unmodifiable(
+        _require(translation).getBook(bookName)?.chapters ?? const [],
+      );
+
+  /// Ordered list of chapter numbers (1-based) for [bookName].
+  List<int> getChapterNumbers(String translation, String bookName) =>
+      getChapters(translation, bookName).map((c) => c.chapter).toList();
+
+  // ── Verse-level ───────────────────────────────────────────────────────────
+
+  /// All verses inside a given chapter, or an empty list if not found.
+  List<BibleVerse> getVerses(
+    String translation,
+    String bookName,
+    int chapterNumber,
+  ) =>
+      List.unmodifiable(
+        _require(translation).getChapter(bookName, chapterNumber)?.verses ??
+            const [],
+      );
+
   BibleChapter? getChapter(
     String translation,
     String bookName,
     int chapterNumber,
-  ) {
-    _assertTranslation(translation);
-    return _data.getChapter(bookName, chapterNumber);
-  }
+  ) =>
+      _require(translation).getChapter(bookName, chapterNumber);
 
-  /// Returns a [BibleVerse] or null if not found.
-  ///
-  /// Example:
-  /// ```dart
-  /// final verse = repo.getVerse('KJV', 'John', 3, 16);
-  /// ```
   BibleVerse? getVerse(
     String translation,
     String bookName,
     int chapterNumber,
     int verseNumber,
-  ) {
-    _assertTranslation(translation);
-    return _data.getVerse(bookName, chapterNumber, verseNumber);
-  }
+  ) =>
+      _require(translation).getVerse(bookName, chapterNumber, verseNumber);
 
-  /// Returns all verses in a chapter, or an empty list if not found.
-  List<BibleVerse> getVerses(
-    String translation,
-    String bookName,
-    int chapterNumber,
-  ) {
-    _assertTranslation(translation);
-    return _data.getChapter(bookName, chapterNumber)?.verses ?? const [];
-  }
+  // ── Convenience ───────────────────────────────────────────────────────────
 
-  /// Returns every book name across all testaments.
-  List<String> get allBookNames => _data.testaments
+  /// All book names across all testaments (KJV order, always available after
+  /// [init]).
+  List<String> get allBookNames => _require('KJV')
+      .testaments
       .expand((t) => t.books)
       .map((b) => b.name)
       .toList(growable: false);
 
-  // ---------------------------------------------------------------------------
-  // Internal helpers
-  // ---------------------------------------------------------------------------
+  // ── Internal ──────────────────────────────────────────────────────────────
 
-  void _assertTranslation(String translation) {
-    if (translation.toUpperCase() != _data.translation.toUpperCase()) {
-      throw ArgumentError(
-        'Requested translation "$translation" but the loaded dataset is '
-        '"${_data.translation}". Load the matching asset to use a different '
-        'translation.',
+  Bible _require(String translation) {
+    final key = translation.toUpperCase();
+    final bible = _cache[key];
+    if (bible == null) {
+      throw StateError(
+        'Translation "$translation" is not loaded. '
+        'Await bibleRepo.ensureLoaded("$translation") first.',
       );
     }
+    return bible;
   }
 }
