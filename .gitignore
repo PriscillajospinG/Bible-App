@@ -416,3 +416,14 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+
+Dataset/Bible/JSON/*.json
+Dataset/Bible/JSON/*.txt
+Dataset/Bible/JSON/*.csv
+Dataset/Bible/JSON/*.tsv
+Dataset/Bible/JSON/*.xlsx       
+
+Dataset/Bible/PDF/*.pdf
+Dataset/Bible/PDF/*.json
+Dataset/
