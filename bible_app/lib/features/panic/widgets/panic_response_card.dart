@@ -8,12 +8,21 @@ import '../../../data/models/panic_response.dart';
 ///   • Understanding the Situation
 ///   • Biblical Explanation
 ///   • Biblical Story Example
-///   • Recommended Verses  (chip row)
+///   • Recommended Verses  (tappable chips → [onVerseTap])
 ///   • Short Prayer        (highlighted gradient card)
+///
+/// Pass [onVerseTap] to handle verse-chip taps (e.g. show a bottom sheet).
 class PanicResponseCard extends StatelessWidget {
-  const PanicResponseCard({super.key, required this.panicResponse});
+  const PanicResponseCard({
+    super.key,
+    required this.panicResponse,
+    this.onVerseTap,
+  });
 
   final PanicResponse panicResponse;
+
+  /// Called with the verse reference string when a verse chip is tapped.
+  final void Function(String verseRef)? onVerseTap;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +48,7 @@ class PanicResponseCard extends StatelessWidget {
           body: r.biblicalStoryExample,
           iconColor: const Color(0xFF2980B9),
         ),
-        _VerseSection(verses: r.recommendedVerses),
+        _VerseSection(verses: r.recommendedVerses, onVerseTap: onVerseTap),
         _PrayerSection(prayer: r.shortPrayer),
       ],
     );

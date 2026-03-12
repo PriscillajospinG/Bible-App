@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'core/service_locator.dart';
 import 'data/services/favorites_service.dart';
 import 'data/services/panic_search_service.dart';
+import 'features/journal/repositories/journal_repository.dart';
+import 'features/journal/services/emotion_detection_service.dart';
+import 'features/journal/services/journal_storage_service.dart';
+import 'features/journal/services/prayer_generator_service.dart';
+import 'features/journal/services/verse_suggestion_service.dart';
 import 'ui/screens/home_screen.dart';
 
 Future<void> main() async {
@@ -19,9 +24,18 @@ Future<void> main() async {
   favoritesService = FavoritesService();
   await favoritesService.init();
 
+  // Journal services.
+  final journalStorage = JournalStorageService();
+  await journalStorage.init();
+  journalRepo = JournalRepository(storage: journalStorage);
+  emotionDetectionService = EmotionDetectionService();
+  verseSuggestionService = VerseSuggestionService(bibleRepo: bibleRepo);
+  prayerGeneratorService = PrayerGeneratorService();
+
   debugPrint('Bible loaded — ${bibleRepo.allBookNames.length} books (KJV)');
   debugPrint('Panic dataset — ${panicRepo.count} entries');
   debugPrint('Favorites restored — ${favoritesService.count} saved');
+  debugPrint('Journal entries — ${journalRepo.count} entries');
 
   runApp(const BibleApp());
 }

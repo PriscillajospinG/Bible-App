@@ -1,0 +1,260 @@
+import 'package:flutter/material.dart';
+
+import '../../../core/service_locator.dart';
+import '../models/verse_of_day.dart';
+import '../widgets/prayer_point_list.dart';
+import '../widgets/verse_of_day_card.dart';
+
+/// Static list of reflection questions shown in rotation based on day-of-year.
+const _reflectionPrompts = [
+  'What is one thing God has done for you this week that you haven't thanked Him for yet?',
+  'Where have you been relying on yourself instead of trusting God?',
+  'What fear has been holding you back from stepping into God's calling?',
+  'Is there someone you need to forgive — including yourself?',
+  'What area of your life needs more of God's presence today?',
+  'What does being still before God look and feel like for you right now?',
+  'Where have you seen God's faithfulness in a season you almost gave up?',
+  'What habit or thought pattern would you like God to renew in you?',
+  'Who can you encourage or pray for today?',
+  'What promise from Scripture do you need to stand on right now?',
+];
+
+class TodayScreen extends StatefulWidget {
+  const TodayScreen({super.key});
+
+  @override
+  State<TodayScreen> createState() => _TodayScreenState();
+}
+
+class _TodayScreenState extends State<TodayScreen> {
+  VerseOfDay? _verse;
+  List<String> _prayers = [];
+  String _reflectionPrompt = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    journalRefreshNotifier.addListener(_onRefresh);
+    _loadTodayData();
+  }
+
+  @override
+  void dispose() {
+    journalRefreshNotifier.removeListener(_onRefresh);
+    super.dispose();
+  }
+
+  void _onRefresh() => _loadTodayData();
+
+  void _loadTodayData() {
+    final latestEntry = journalRepo.getLatestEntry();
+    final emotions = latestEntry != null && latestEntry.detectedEmotions.isNotEmpty
+        ? latestEntry.detectedEmotions
+        : ['reflection'];
+
+    final verse = verseSuggestionService.getVerseForEmotion(emotions.first);
+    final prayers = prayerGeneratorService.generatePrayerPoints(emotions);
+
+    final dayOfYear = DateTime.now().difference(
+          DateTime(DateTime.now().year, 1, 1),
+        ).inDays;
+    final prompt = _reflectionPrompts[dayOfYear % _reflectionPrompts.length];
+
+    setState(() {
+      _verse = verse;
+      _prayers = prayers;
+      _reflectionPrompt = prompt;
+      _isLoading = false;
+    });
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFDF8F0),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: () async => _loadTodayData(),
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 32),
+                  children: [
+                    // ── Header ───────────────────────────────────────────
+                    _Header(greeting: _greeting()),
+
+                    const SizedBox(height: 20),
+
+                    // ── Verse of the Day ─────────────────────────────────
+                    if (_verse != null) VerseOfDayCard(verse: _verse!),
+
+                    const SizedBox(height: 24),
+
+                    // ── Prayer Points ────────────────────────────────────
+                    PrayerPointList(prayers: _prayers),
+
+                    const SizedBox(height: 24),
+
+                    // ── Reflection Prompt ────────────────────────────────
+                    _ReflectionCard(prompt: _reflectionPrompt),
+
+                    const SizedBox(height: 24),
+
+                    // ── Journal Quick-link ───────────────────────────────
+                    _JournalPromptBanner(),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+// ── Sub-widgets ─────────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  const _Header({required this.greeting});
+
+  final String greeting;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            greeting,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.brown.shade400,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Today\'s Spiritual Focus',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF3B2A1A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReflectionCard extends StatelessWidget {
+  const _ReflectionCard({required this.prompt});
+
+  final String prompt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF9EC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8D8B0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.lightbulb_outline,
+                  size: 15, color: Color(0xFF6B4226)),
+              const SizedBox(width: 6),
+              Text(
+                'REFLECT',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: Colors.brown.shade600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            prompt,
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.6,
+              color: Color(0xFF3B2A1A),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _JournalPromptBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final entryCount = journalRepo.count;
+    final hasEntryToday = () {
+      final latest = journalRepo.getLatestEntry();
+      if (latest == null) return false;
+      final today =
+          DateTime.now().toIso8601String().substring(0, 10);
+      return latest.dateKey == today;
+    }();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0E9D2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.edit_note_rounded,
+              size: 28, color: Color(0xFF6B4226)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasEntryToday
+                      ? 'You\'ve journalled today!'
+                      : 'Write in your journal',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Color(0xFF3B2A1A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasEntryToday
+                      ? '$entryCount ${entryCount == 1 ? 'entry' : 'entries'} in your journal'
+                      : 'Capture your thoughts — they shape your prayer.',
+                  style: TextStyle(fontSize: 12, color: Colors.brown.shade500),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
