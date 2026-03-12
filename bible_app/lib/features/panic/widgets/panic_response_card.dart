@@ -124,9 +124,10 @@ class _Section extends StatelessWidget {
 }
 
 class _VerseSection extends StatelessWidget {
-  const _VerseSection({required this.verses});
+  const _VerseSection({required this.verses, this.onVerseTap});
 
   final List<String> verses;
+  final void Function(String)? onVerseTap;
 
   @override
   Widget build(BuildContext context) {
@@ -148,12 +149,12 @@ class _VerseSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.bookmark_rounded,
+              const Icon(Icons.bookmark_rounded,
                   color: Color(0xFF27AE60), size: 18),
-              SizedBox(width: 8),
-              Text(
+              const SizedBox(width: 8),
+              const Text(
                 'Recommended Verses',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
@@ -161,31 +162,60 @@ class _VerseSection extends StatelessWidget {
                   color: Color(0xFF4A3728),
                 ),
               ),
+              if (onVerseTap != null) ...[
+                const Spacer(),
+                Text(
+                  'Tap to read',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.brown.shade400,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: verses
-                .map(
-                  (v) => Chip(
-                    label: Text(
-                      v,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF4A3728),
-                      ),
+            children: verses.map((v) {
+              if (onVerseTap != null) {
+                return ActionChip(
+                  label: Text(
+                    v,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4A3728),
                     ),
-                    backgroundColor: const Color(0xFFF0E9D2),
-                    side: const BorderSide(color: Color(0xFFD4C4A0)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 0),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                )
-                .toList(),
+                  backgroundColor: const Color(0xFFF0E9D2),
+                  side: const BorderSide(color: Color(0xFFD4C4A0)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  avatar: const Icon(Icons.open_in_new_rounded,
+                      size: 13, color: Color(0xFF6B4226)),
+                  onPressed: () => onVerseTap!(v),
+                );
+              }
+              return Chip(
+                label: Text(
+                  v,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF4A3728),
+                  ),
+                ),
+                backgroundColor: const Color(0xFFF0E9D2),
+                side: const BorderSide(color: Color(0xFFD4C4A0)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              );
+            }).toList(),
           ),
         ],
       ),
