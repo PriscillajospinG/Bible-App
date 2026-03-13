@@ -7,16 +7,16 @@ import '../widgets/verse_of_day_card.dart';
 
 /// Static list of reflection questions shown in rotation based on day-of-year.
 const _reflectionPrompts = [
-  'What is one thing God has done for you this week that you haven't thanked Him for yet?',
-  'Where have you been relying on yourself instead of trusting God?',
-  'What fear has been holding you back from stepping into God's calling?',
-  'Is there someone you need to forgive — including yourself?',
-  'What area of your life needs more of God's presence today?',
-  'What does being still before God look and feel like for you right now?',
-  'Where have you seen God's faithfulness in a season you almost gave up?',
-  'What habit or thought pattern would you like God to renew in you?',
-  'Who can you encourage or pray for today?',
-  'What promise from Scripture do you need to stand on right now?',
+  "What is one thing God has done for you this week that you haven\u2019t thanked Him for yet?",
+  "Where have you been relying on yourself instead of trusting God?",
+  "What fear has been holding you back from stepping into God\u2019s calling?",
+  "Is there someone you need to forgive \u2014 including yourself?",
+  "What area of your life needs more of God\u2019s presence today?",
+  "What does being still before God look and feel like for you right now?",
+  "Where have you seen God\u2019s faithfulness in a season you almost gave up?",
+  "What habit or thought pattern would you like God to renew in you?",
+  "Who can you encourage or pray for today?",
+  "What promise from Scripture do you need to stand on right now?",
 ];
 
 class TodayScreen extends StatefulWidget {

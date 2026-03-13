@@ -32,6 +32,26 @@ class _HomeScreenState extends State<HomeScreen> {
   final _panicNavKey = GlobalKey<NavigatorState>();
   final _journalNavKey = GlobalKey<NavigatorState>();
 
+  @override
+  void initState() {
+    super.initState();
+    tabSwitchRequest.addListener(_onTabSwitchRequest);
+  }
+
+  @override
+  void dispose() {
+    tabSwitchRequest.removeListener(_onTabSwitchRequest);
+    super.dispose();
+  }
+
+  void _onTabSwitchRequest() {
+    final tab = tabSwitchRequest.value;
+    if (tab != null) {
+      setState(() => _currentIndex = tab);
+      tabSwitchRequest.value = null;
+    }
+  }
+
   // ── Android back-button handling ───────────────────────────────────────────
   Future<bool> _onWillPop() async {
     final keys = [_todayNavKey, _bibleNavKey, _panicNavKey, _journalNavKey];
@@ -68,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             _TabNavigator(
               navigatorKey: _panicNavKey,
-              builder: () => PanicScreen(searchService: panicSearchService),
+              builder: () => PanicScreen(searchService: semanticPanicSearchService),
             ),
             _TabNavigator(
               navigatorKey: _journalNavKey,
@@ -88,46 +108,6 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedIcon: Icon(Icons.wb_sunny, color: Color(0xFF6B4226)),
               label: 'Today',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.menu_book_outlined),
-              selectedIcon: Icon(Icons.menu_book, color: Color(0xFF6B4226)),
-              label: 'Bible',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.volunteer_activism_outlined),
-              selectedIcon: Icon(
-                Icons.volunteer_activism,
-                color: Color(0xFF6B4226),
-              ),
-              label: 'Guidance',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.edit_note_outlined),
-              selectedIcon:
-                  Icon(Icons.edit_note_rounded, color: Color(0xFF6B4226)),
-              label: 'Journal',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Wraps a tab's root widget in its own [Navigator] so each tab maintains an
-/// independent navigation stack.
-class _TabNavigator extends StatelessWidget {
-  const _TabNavigator({
-    required this.navigatorKey,
-    required this.builder,
-  });
-
-  final GlobalKey<NavigatorState> navigatorKey;
-  final Widget Function() builder;
-
-  @override
-  Widget build(BuildContext context) {
-    return Navigator(
             NavigationDestination(
               icon: Icon(Icons.menu_book_outlined),
               selectedIcon: Icon(Icons.menu_book, color: Color(0xFF6B4226)),

@@ -20,7 +20,7 @@ class TextProcessingService {
     'since', 'while', 'during', 'such', 'what', 'which', 'there', 'here',
     'also', 'even', 'still', 'well', 'back', 'only', 'thing', 'things',
     'want', 'go', 'going', 'know', 'try', 'make', 'see', 'him', 'her',
-    'them', 'his', 'she', 'he', 'its', 'one', 'two', 'been', 'come',
+    'them', 'his', 'she', 'he', 'one', 'two', 'come',
     'help', 'need', 'please', 'never', 'always', 'much', 'many', 'every',
     'around', 'again', 'today', 'now',
   };

@@ -70,6 +70,9 @@ class BibleRepository {
   /// Returns all supported translation codes (e.g. ['KJV', 'NIV', 'NLT', 'AMP']).
   List<String> getTranslations() => availableTranslations.keys.toList();
 
+  /// Returns translations currently loaded in memory.
+  List<String> getLoadedTranslations() => _cache.keys.toList(growable: false);
+
   /// Human-readable full name for a [translation] code.
   String getFullName(String translation) =>
       translationFullNames[translation.toUpperCase()] ?? translation;

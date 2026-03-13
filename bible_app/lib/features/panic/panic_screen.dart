@@ -439,14 +439,14 @@ class _VerseBottomSheetState extends State<_VerseBottomSheet> {
     }
 
     try {
-      final text = await bibleRepo.getVerse(
+      final verse = bibleRepo.getVerse(
         'KJV',
         parsed.book,
         parsed.chapter,
         parsed.verse,
       );
       setState(() {
-        _verseText = text;
+        _verseText = verse?.text;
         _loading = false;
       });
     } catch (_) {

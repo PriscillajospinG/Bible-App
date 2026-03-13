@@ -1,24 +1,31 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/service_locator.dart';
+import '../../../data/models/bible_verse.dart';
+import '../services/highlight_service.dart';
+import '../widgets/verse_share_card.dart';
 import '../widgets/verse_tile.dart';
 
-/// Full-screen Bible chapter reader with:
-/// - Scrollable verse list with verse numbers
-/// - Tap-to-highlight (session-only, golden background)
-/// - Bookmark icon per verse (persisted via FavoritesService)
-/// - Previous / Next chapter navigation bar at the bottom
 class VerseReaderScreen extends StatefulWidget {
   const VerseReaderScreen({
     super.key,
     required this.translation,
     required this.bookName,
     required this.initialChapter,
+    this.initialVerse,
   });
 
   final String translation;
   final String bookName;
   final int initialChapter;
+  final int? initialVerse;
 
   @override
   State<VerseReaderScreen> createState() => _VerseReaderScreenState();
@@ -27,8 +34,8 @@ class VerseReaderScreen extends StatefulWidget {
 class _VerseReaderScreenState extends State<VerseReaderScreen> {
   late int _chapter;
   late List<int> _chapterNums;
-  final Set<int> _highlighted = {};
   final ScrollController _scrollController = ScrollController();
+  final Map<int, GlobalKey> _verseKeys = {};
 
   @override
   void initState() {
@@ -36,6 +43,12 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
     _chapter = widget.initialChapter;
     _chapterNums =
         bibleRepo.getChapterNumbers(widget.translation, widget.bookName);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialVerse != null) {
+        _scrollToVerse(widget.initialVerse!);
+      }
+    });
   }
 
   @override
@@ -43,8 +56,6 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
     _scrollController.dispose();
     super.dispose();
   }
-
-  // ── Navigation ─────────────────────────────────────────────────────────────
 
   bool get _hasPrev =>
       _chapterNums.isNotEmpty && _chapter > _chapterNums.first;
@@ -55,7 +66,7 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
   void _navigate(int newChapter) {
     setState(() {
       _chapter = newChapter;
-      _highlighted.clear();
+      _verseKeys.clear();
     });
     _scrollController.jumpTo(0);
   }
@@ -72,16 +83,78 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
     }
   }
 
-  // ── Highlighting ────────────────────────────────────────────────────────────
+  BibleVerse _withContext(BibleVerse verse) {
+    return BibleVerse(
+      translation: widget.translation,
+      book: widget.bookName,
+      chapter: _chapter,
+      verse: verse.verse,
+      text: verse.text,
+    );
+  }
 
-  void _toggleHighlight(int verseNumber) {
-    setState(() {
-      if (_highlighted.contains(verseNumber)) {
-        _highlighted.remove(verseNumber);
-      } else {
-        _highlighted.add(verseNumber);
+  Future<void> _toggleBookmark(BibleVerse verse) async {
+    final item = _withContext(verse);
+    await bookmarkService.toggleBookmark(item);
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _chooseHighlight(BibleVerse verse) async {
+    final item = _withContext(verse);
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      builder: (_) => _HighlightPickerSheet(current: highlightService.getHighlightColor(item)),
+    );
+
+    if (selected == null) return;
+    if (selected == 'clear') {
+      await highlightService.removeHighlight(item);
+    } else {
+      final color = HighlightService.supportedColors[selected];
+      if (color != null) {
+        await highlightService.highlightVerse(item, color);
       }
-    });
+    }
+
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _openShareDialog(BibleVerse verse) async {
+    final item = _withContext(verse);
+    final reference = '${item.book} ${item.chapter}:${item.verse}';
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _ShareVerseDialog(
+        reference: reference,
+        text: item.text,
+        translation: item.translation ?? widget.translation,
+      ),
+    );
+  }
+
+  void _scrollToVerse(int verseNumber) {
+    final key = _verseKeys[verseNumber];
+    final ctx = key?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+      alignment: 0.15,
+    );
+  }
+
+  int get _chapterHighlightCount {
+    final verses = bibleRepo.getVerses(widget.translation, widget.bookName, _chapter);
+    var count = 0;
+    for (final v in verses) {
+      if (highlightService.getHighlightColor(_withContext(v)) != null) {
+        count++;
+      }
+    }
+    return count;
   }
 
   @override
@@ -111,8 +184,7 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
         centerTitle: true,
         elevation: 0,
         actions: [
-          // Highlighted verse count badge
-          if (_highlighted.isNotEmpty)
+          if (_chapterHighlightCount > 0)
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: Center(
@@ -124,7 +196,7 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '${_highlighted.length}',
+                    '$_chapterHighlightCount',
                     style: const TextStyle(
                       color: Color(0xFF4A3728),
                       fontWeight: FontWeight.w700,
@@ -138,11 +210,9 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
       ),
       body: Column(
         children: [
-          // Chapter position strip
           Container(
             color: const Color(0xFF5A3420),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -156,8 +226,6 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
               ],
             ),
           ),
-
-          // Verse list
           Expanded(
             child: verses.isEmpty
                 ? const Center(
@@ -178,19 +246,26 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
                     ),
                     itemBuilder: (_, i) {
                       final v = verses[i];
-                      return VerseTile(
-                        verse: v,
-                        translation: widget.translation,
-                        bookName: widget.bookName,
-                        chapterNumber: _chapter,
-                        isHighlighted: _highlighted.contains(v.verse),
-                        onTap: () => _toggleHighlight(v.verse),
+                      final data = _withContext(v);
+                      _verseKeys.putIfAbsent(v.verse, () => GlobalKey());
+
+                      return Container(
+                        key: _verseKeys[v.verse],
+                        child: VerseTile(
+                          verse: v,
+                          translation: widget.translation,
+                          bookName: widget.bookName,
+                          chapterNumber: _chapter,
+                          highlightColor: highlightService.getHighlightColor(data),
+                          isBookmarked: bookmarkService.isBookmarked(data),
+                          onToggleBookmark: () => _toggleBookmark(v),
+                          onChooseHighlight: () => _chooseHighlight(v),
+                          onShare: () => _openShareDialog(v),
+                        ),
                       );
                     },
                   ),
           ),
-
-          // Previous / Next chapter nav bar
           _ChapterNavBar(
             chapterNumber: _chapter,
             hasPrev: _hasPrev,
@@ -204,9 +279,168 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Private sub-widget
-// ---------------------------------------------------------------------------
+class _HighlightPickerSheet extends StatelessWidget {
+  const _HighlightPickerSheet({this.current});
+
+  final Color? current;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Highlight color',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              children: HighlightService.supportedColors.entries.map((entry) {
+                final isCurrent =
+                    current?.toARGB32() == entry.value.toARGB32();
+                return ChoiceChip(
+                  selected: isCurrent,
+                  label: Text(entry.key),
+                  backgroundColor: entry.value,
+                  selectedColor: entry.value,
+                  labelStyle: const TextStyle(
+                    color: Color(0xFF3A2D20),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  onSelected: (_) => Navigator.of(context).pop(entry.key),
+                );
+              }).toList(growable: false),
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).pop('clear'),
+              icon: const Icon(Icons.layers_clear_rounded),
+              label: const Text('Clear highlight'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShareVerseDialog extends StatefulWidget {
+  const _ShareVerseDialog({
+    required this.reference,
+    required this.text,
+    required this.translation,
+  });
+
+  final String reference;
+  final String text;
+  final String translation;
+
+  @override
+  State<_ShareVerseDialog> createState() => _ShareVerseDialogState();
+}
+
+class _ShareVerseDialogState extends State<_ShareVerseDialog> {
+  final _cardKey = GlobalKey();
+  bool _busy = false;
+
+  Future<void> _saveImage() async {
+    setState(() => _busy = true);
+    try {
+      final bytes = await _capturePng(_cardKey);
+      if (bytes == null) return;
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(
+        '${dir.path}/verse_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Saved image to ${file.path}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _shareImage() async {
+    setState(() => _busy = true);
+    try {
+      final bytes = await _capturePng(_cardKey);
+      if (bytes == null) return;
+      final tempDir = await getTemporaryDirectory();
+      final file = File(
+        '${tempDir.path}/verse_share_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: widget.reference,
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<Uint8List?> _capturePng(GlobalKey key) async {
+    await Future.delayed(const Duration(milliseconds: 20));
+    final boundary = key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) return null;
+    final image = await boundary.toImage(pixelRatio: 3.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData?.buffer.asUint8List();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RepaintBoundary(
+              key: _cardKey,
+              child: VerseShareCard(
+                reference: widget.reference,
+                text: widget.text,
+                translation: widget.translation,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _busy ? null : _saveImage,
+                    icon: const Icon(Icons.download_rounded),
+                    label: const Text('Save image'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _shareImage,
+                    icon: const Icon(Icons.share_rounded),
+                    label: const Text('Share'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _ChapterNavBar extends StatelessWidget {
   const _ChapterNavBar({

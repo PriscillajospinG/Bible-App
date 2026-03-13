@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/service_locator.dart';
 import '../widgets/translation_tile.dart';
+import 'bible_search_screen.dart';
+import 'bookmarks_screen.dart';
 import 'testament_selection_screen.dart';
 
 /// Entry point for the Bible reader.
@@ -66,6 +68,29 @@ class _TranslationSelectionScreenState
         ),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Search Bible',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      BibleSearchScreen(searchService: bibleSearchService),
+                ),
+              );
+            },
+            icon: const Icon(Icons.search_rounded),
+          ),
+          IconButton(
+            tooltip: 'Bookmarks',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BookmarksScreen()),
+              );
+            },
+            icon: const Icon(Icons.bookmark_rounded),
+          ),
+        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
