@@ -27,19 +27,3 @@ ios/Runner.xcworkspace/
 assets/models/*.gguf
 assets/models/*.bin
 assets/models/*.pt
-
-# Nested Flutter app support
-bible_app/build/
-bible_app/.dart_tool/
-bible_app/.packages
-bible_app/.flutter-plugins
-bible_app/.flutter-plugins-dependencies
-bible_app/.idea/
-bible_app/.vscode/
-bible_app/android/.gradle/
-bible_app/android/app/build/
-bible_app/ios/Pods/
-bible_app/ios/Runner.xcworkspace/
-bible_app/assets/models/*.gguf
-bible_app/assets/models/*.bin
-bible_app/assets/models/*.pt

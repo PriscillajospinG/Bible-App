@@ -1,90 +1,39 @@
-# Bible-App
+# Bible App (Flutter)
 
-Offline AI-powered Bible companion mobile app built with Flutter.
+Offline AI-powered Bible companion mobile application.
 
-## Project Layout
+## Modules
 
-Current Flutter app root is `bible_app/`.
+- `lib/core`: shared utilities, constants, and common services.
+- `lib/data`: models, repositories, and data loaders.
+- `lib/features`: feature modules (`bible`, `panic`, `journal`, `home`).
+- `lib/ai`: local model integration, prompts, guidance, and emotion detection.
 
-```text
-Bible-App/
-├── bible_app/
-│   ├── lib/
-│   │   ├── core/
-│   │   │   ├── utils/
-│   │   │   ├── constants/
-│   │   │   └── services/
-│   │   ├── data/
-│   │   │   ├── models/
-│   │   │   ├── repositories/
-│   │   │   └── loaders/
-│   │   ├── features/
-│   │   │   ├── bible/
-│   │   │   ├── panic/
-│   │   │   ├── journal/
-│   │   │   └── home/
-│   │   ├── ai/
-│   │   └── main.dart
-│   ├── assets/
-│   │   ├── bible/
-│   │   ├── panic/
-│   │   └── models/
-│   ├── docs/
-│   ├── scripts/
-│   ├── test/
-│   ├── pubspec.yaml
-│   └── .gitignore
-├── Dataset/
-├── LICENSE
-├── README.md
-└── .gitignore
-```
+## Assets
 
-## Local AI Model Setup
+- Bible datasets: `assets/bible/`
+- Panic dataset: `assets/panic/panic_responses.jsonl`
+- Local model folder: `assets/models/`
 
-Model weights are intentionally excluded from Git.
+## Local Model (Not in Git)
 
-1. Download model: `gemma-270m-it-Q4_K_M.gguf`.
-2. Place it at: `bible_app/assets/models/gemma-270m.gguf`.
-3. Never commit `.gguf`, `.bin`, or `.pt` files.
+Download:
 
-See `bible_app/assets/models/README.md` for details.
+`gemma-270m-it-Q4_K_M.gguf`
 
-## Dataset Policy
+Place in:
 
-- Bible JSON and panic JSONL datasets can stay in repository while small.
-- Move large datasets to external download scripts when they grow.
+`assets/models/`
 
-## Clean Git Workflow
+Runtime expects:
+
+`assets/models/gemma-270m.gguf`
+
+Model weights are ignored by `.gitignore`.
+
+## Run
 
 ```bash
-cd /Users/priscillajosping/Downloads/Bible-App
-
-# Initialize if needed
-git init
-
-# Ensure large model is not tracked
-git rm --cached bible_app/assets/models/gemma-270m.gguf 2>/dev/null || true
-
-# Stage only required development files
-git add bible_app/lib/
-git add bible_app/assets/bible/
-git add bible_app/assets/panic/
-git add bible_app/assets/models/README.md
-git add bible_app/pubspec.yaml
-git add bible_app/README.md
-git add README.md
-git add .gitignore bible_app/.gitignore
-git add bible_app/docs/ bible_app/scripts/
-
-git commit -m "Initial clean project structure"
-```
-
-## Push to GitHub
-
-```bash
-cd /Users/priscillajosping/Downloads/Bible-App
-git remote add origin https://github.com/<your-username>/Bible-App.git
-git branch -M main
-git push -u origin main
+flutter pub get
+flutter run
 ```

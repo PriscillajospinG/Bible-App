@@ -8,7 +8,7 @@ Download model:
 
 Place it in:
 
-`bible_app/assets/models/`
+`assets/models/`
 
 Expected runtime filename:
 
