@@ -1,7 +1,19 @@
-Place your quantized Gemma model file here:
+# Local Model Setup
 
-- Expected filename: gemma-270m.gguf
-- Recommended quantization: Q4_K_M
-- Expected size: ~250MB
+This project does not commit AI model weights to Git.
 
-This repository does not include model weights.
+Download model:
+
+`gemma-270m-it-Q4_K_M.gguf`
+
+Place it in:
+
+`bible_app/assets/models/`
+
+Expected runtime filename:
+
+`gemma-270m.gguf`
+
+Notes:
+- Keep model files local only.
+- `.gguf`, `.bin`, and `.pt` files are ignored by `.gitignore`.

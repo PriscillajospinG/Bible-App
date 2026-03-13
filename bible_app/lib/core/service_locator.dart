@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 
 import '../ai/gemma_model_service.dart';
+import '../ai/emotion_detection_service.dart';
 import '../data/repositories/bible_repository.dart';
 import '../data/repositories/panic_response_repository.dart';
 import '../data/services/favorites_service.dart';
 import '../data/services/panic_search_service.dart';
 import '../features/journal/repositories/journal_repository.dart';
-import '../features/journal/services/emotion_detection_service.dart';
 import '../features/journal/services/prayer_generator_service.dart';
 import '../features/journal/services/verse_suggestion_service.dart';
 import '../features/bible/services/bible_search_service.dart';

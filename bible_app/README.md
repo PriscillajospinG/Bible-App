@@ -1,17 +1,39 @@
-# bible_app
+# Bible App (Flutter)
 
-A new Flutter project.
+Offline AI-powered Bible companion mobile application.
 
-## Getting Started
+## Modules
 
-This project is a starting point for a Flutter application.
+- `lib/core`: shared utilities, constants, and common services.
+- `lib/data`: models, repositories, and data loaders.
+- `lib/features`: feature modules (`bible`, `panic`, `journal`, `home`).
+- `lib/ai`: local model integration, prompts, guidance, and emotion detection.
 
-A few resources to get you started if this is your first Flutter project:
+## Assets
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Bible datasets: `assets/bible/`
+- Panic dataset: `assets/panic/panic_responses.jsonl`
+- Local model folder: `assets/models/`
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Local Model (Not in Git)
+
+Download:
+
+`gemma-270m-it-Q4_K_M.gguf`
+
+Place in:
+
+`assets/models/`
+
+Runtime expects:
+
+`assets/models/gemma-270m.gguf`
+
+Model weights are ignored by `.gitignore`.
+
+## Run
+
+```bash
+flutter pub get
+flutter run
+```
