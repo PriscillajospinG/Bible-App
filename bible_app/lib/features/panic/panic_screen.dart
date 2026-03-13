@@ -34,6 +34,8 @@ class _PanicScreenState extends State<PanicScreen> {
   bool _isLoading = false;
   String? _error;
   bool _savedToHistory = false;
+  String? _aiFormattedResponse;
+  bool _isFormatting = false;
 
   @override
   void dispose() {
@@ -58,6 +60,8 @@ class _PanicScreenState extends State<PanicScreen> {
       _error = null;
       _result = null;
       _savedToHistory = false;
+      _aiFormattedResponse = null;
+      _isFormatting = false;
     });
 
     // Yield one frame so the loading indicator renders before the scoring loop.
@@ -74,7 +78,26 @@ class _PanicScreenState extends State<PanicScreen> {
         _result = response;
         _isLoading = false;
         _savedToHistory = true;
+        _isFormatting = true;
       });
+
+      try {
+        final formatted = await gemmaModelService.generateResponse(
+          userMessage: message,
+          panicResponse: response,
+        );
+        if (!mounted) return;
+        setState(() {
+          _aiFormattedResponse = formatted;
+          _isFormatting = false;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _aiFormattedResponse = null;
+          _isFormatting = false;
+        });
+      }
 
       await Future.delayed(const Duration(milliseconds: 120));
       if (mounted && _scrollKey.currentContext != null) {
@@ -97,6 +120,8 @@ class _PanicScreenState extends State<PanicScreen> {
       _result = null;
       _error = null;
       _savedToHistory = false;
+      _aiFormattedResponse = null;
+      _isFormatting = false;
     });
     _controller.clear();
   }
@@ -202,6 +227,11 @@ ${c.shortPrayer}
                 const _ResultDivider(),
                 const SizedBox(height: 16),
                 _UserMessageBubble(message: _controller.text.trim()),
+                const SizedBox(height: 12),
+                _AiRewriteCard(
+                  text: _aiFormattedResponse,
+                  isLoading: _isFormatting,
+                ),
                 const SizedBox(height: 16),
                 SizedBox(key: _scrollKey, height: 0),
                 PanicResponseCard(
@@ -403,6 +433,69 @@ class _ActionRow extends StatelessWidget {
             ],
           ),
       ],
+    );
+  }
+}
+
+class _AiRewriteCard extends StatelessWidget {
+  const _AiRewriteCard({required this.text, required this.isLoading});
+
+  final String? text;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F8E9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC5E1A5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded,
+                  size: 16, color: Color(0xFF33691E)),
+              SizedBox(width: 6),
+              Text(
+                'Pastoral Rewrite (Gemma Local)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF33691E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (isLoading)
+            const Row(
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Text('Formatting response locally...'),
+              ],
+            )
+          else
+            Text(
+              text ??
+                  'Local AI formatting unavailable. Structured guidance is shown below.',
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Color(0xFF2E2E2E),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

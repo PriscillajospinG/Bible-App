@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  ffi: ^2.1.3
   shared_preferences: ^2.3.2
   path_provider: ^2.1.5
   share_plus: ^10.0.2
@@ -30,3 +31,4 @@ flutter:
     - assets/bible/nlt.json
     - assets/bible/amp.json
     - assets/panic/
+    - assets/models/

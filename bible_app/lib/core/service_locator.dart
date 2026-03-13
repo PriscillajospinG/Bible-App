@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../ai/gemma_model_service.dart';
 import '../data/repositories/bible_repository.dart';
 import '../data/repositories/panic_response_repository.dart';
 import '../data/services/favorites_service.dart';
@@ -53,6 +54,9 @@ late final ReadingProgressService readingProgressService;
 late final ReadingPlanService readingPlanService;
 late final StreakService streakService;
 late final ReminderNotificationService reminderNotificationService;
+
+// ── Local AI Step 9 ─────────────────────────────────────────────────────────
+late final GemmaModelService gemmaModelService;
 
 // ── Settings Step 8 ──────────────────────────────────────────────────────────
 late final SettingsService settingsService;

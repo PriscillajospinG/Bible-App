@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'ai/gemma_model_service.dart';
 import 'core/service_locator.dart';
 import 'data/services/favorites_service.dart';
 import 'data/services/panic_search_service.dart';
@@ -61,6 +62,16 @@ Future<void> main() async {
   await streakService.updateStreak();
   reminderNotificationService = ReminderNotificationService();
   await reminderNotificationService.init();
+
+  // Local AI (Gemma) service.
+  gemmaModelService = GemmaModelService();
+  try {
+    await gemmaModelService.initializeModel();
+    debugPrint('Gemma model initialized at ${gemmaModelService.modelPathOrEmpty}');
+  } catch (e) {
+    // Keep app fully functional even if model/native engine isn't ready yet.
+    debugPrint('Gemma model not initialized: $e');
+  }
 
   // Settings Step 8 services.
   settingsService = SettingsService();
