@@ -26,9 +26,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/bible/kjv.json
-    - assets/bible/niv.json
-    - assets/bible/nlt.json
-    - assets/bible/amp.json
+    - assets/bible/
     - assets/panic/
     - assets/models/
