@@ -45,6 +45,8 @@ class _TranslationSelectionScreenState
     }
 
     if (mounted) {
+      await settingsService.savePreferredTranslation(code);
+      appPreferencesNotifier.value++;
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => TestamentSelectionScreen(translation: code),
@@ -56,6 +58,7 @@ class _TranslationSelectionScreenState
   @override
   Widget build(BuildContext context) {
     final translations = bibleRepo.getTranslations();
+    final preferred = settingsService.preferredTranslation;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF6F0),
@@ -96,6 +99,18 @@ class _TranslationSelectionScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Header(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+            child: Card(
+              child: ListTile(
+                leading: const Icon(Icons.star_rounded, color: Color(0xFF6B4226)),
+                title: Text('Preferred: $preferred'),
+                subtitle: const Text('Quickly open your preferred translation'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _onTap(preferred),
+              ),
+            ),
+          ),
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(top: 8, bottom: 24),
@@ -104,7 +119,9 @@ class _TranslationSelectionScreenState
                 final code = translations[i];
                 return TranslationTile(
                   translationCode: code,
-                  fullName: bibleRepo.getFullName(code),
+                  fullName: code == preferred
+                      ? '${bibleRepo.getFullName(code)}  • Preferred'
+                      : bibleRepo.getFullName(code),
                   isLoaded: bibleRepo.isLoaded(code),
                   isLoading: _loadingTranslation == code,
                   onTap: () => _onTap(code),

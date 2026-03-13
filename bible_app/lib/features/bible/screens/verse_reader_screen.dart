@@ -48,6 +48,11 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
       widget.bookName,
       _chapter,
     );
+    bibleCacheService.prefetchAdjacentChapters(
+      widget.translation,
+      widget.bookName,
+      _chapter,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialVerse != null) {
@@ -74,6 +79,11 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
       _verseKeys.clear();
     });
     readingProgressService.saveProgress(
+      widget.translation,
+      widget.bookName,
+      _chapter,
+    );
+    bibleCacheService.prefetchAdjacentChapters(
       widget.translation,
       widget.bookName,
       _chapter,
@@ -157,7 +167,8 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
   }
 
   int get _chapterHighlightCount {
-    final verses = bibleRepo.getVerses(widget.translation, widget.bookName, _chapter);
+    final verses =
+        bibleCacheService.getChapterVerses(widget.translation, widget.bookName, _chapter);
     var count = 0;
     for (final v in verses) {
       if (highlightService.getHighlightColor(_withContext(v)) != null) {
@@ -170,7 +181,7 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
   @override
   Widget build(BuildContext context) {
     final verses =
-        bibleRepo.getVerses(widget.translation, widget.bookName, _chapter);
+      bibleCacheService.getChapterVerses(widget.translation, widget.bookName, _chapter);
     final chapterIdx = _chapterNums.indexOf(_chapter);
     final totalChapters = _chapterNums.length;
 
@@ -271,6 +282,9 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
                           onToggleBookmark: () => _toggleBookmark(v),
                           onChooseHighlight: () => _chooseHighlight(v),
                           onShare: () => _openShareDialog(v),
+                          fontScale: accessibilityService.fontScale,
+                          highContrast: accessibilityService.highContrast,
+                          largeVerseText: accessibilityService.largeVerseText,
                         ),
                       );
                     },

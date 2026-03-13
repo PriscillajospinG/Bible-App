@@ -14,6 +14,9 @@ class VerseTile extends StatelessWidget {
     required this.onToggleBookmark,
     required this.onChooseHighlight,
     required this.onShare,
+    required this.fontScale,
+    required this.highContrast,
+    required this.largeVerseText,
   });
 
   final BibleVerse verse;
@@ -25,9 +28,17 @@ class VerseTile extends StatelessWidget {
   final VoidCallback onToggleBookmark;
   final VoidCallback onChooseHighlight;
   final VoidCallback onShare;
+  final double fontScale;
+  final bool highContrast;
+  final bool largeVerseText;
 
   @override
   Widget build(BuildContext context) {
+    final verseFontSize = (largeVerseText ? 20.0 : 17.0) * fontScale;
+    final verseColor = highContrast
+        ? Theme.of(context).colorScheme.onSurface
+        : const Color(0xFF1A1A1A);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
@@ -52,10 +63,10 @@ class VerseTile extends StatelessWidget {
             Expanded(
               child: Text(
                 verse.text,
-                style: const TextStyle(
-                  fontSize: 17,
+                style: TextStyle(
+                  fontSize: verseFontSize,
                   height: 1.75,
-                  color: Color(0xFF1A1A1A),
+                  color: verseColor,
                 ),
               ),
             ),

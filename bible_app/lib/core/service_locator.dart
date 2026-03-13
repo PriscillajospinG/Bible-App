@@ -15,6 +15,10 @@ import '../features/home/services/reading_plan_service.dart';
 import '../features/home/services/reading_progress_service.dart';
 import '../features/home/services/reminder_notification_service.dart';
 import '../features/home/services/streak_service.dart';
+import '../features/settings/accessibility_service.dart';
+import '../features/settings/bible_cache_service.dart';
+import '../features/settings/data_export_service.dart';
+import '../features/settings/settings_service.dart';
 import '../features/panic/services/panic_history_service.dart';
 import '../features/panic/services/semantic_panic_search_service.dart';
 
@@ -49,6 +53,15 @@ late final ReadingProgressService readingProgressService;
 late final ReadingPlanService readingPlanService;
 late final StreakService streakService;
 late final ReminderNotificationService reminderNotificationService;
+
+// ── Settings Step 8 ──────────────────────────────────────────────────────────
+late final SettingsService settingsService;
+late final AccessibilityService accessibilityService;
+late final DataExportService dataExportService;
+late final BibleCacheService bibleCacheService;
+
+/// Bump this notifier whenever theme/accessibility/settings should rebuild the app shell.
+final appPreferencesNotifier = ValueNotifier<int>(0);
 
 // ── Panic Step 5 ─────────────────────────────────────────────────────────────
 late final SemanticPanicSearchService semanticPanicSearchService;

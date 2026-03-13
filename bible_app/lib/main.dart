@@ -15,6 +15,10 @@ import 'features/home/services/reading_plan_service.dart';
 import 'features/home/services/reading_progress_service.dart';
 import 'features/home/services/reminder_notification_service.dart';
 import 'features/home/services/streak_service.dart';
+import 'features/settings/accessibility_service.dart';
+import 'features/settings/bible_cache_service.dart';
+import 'features/settings/data_export_service.dart';
+import 'features/settings/settings_service.dart';
 import 'features/panic/services/panic_history_service.dart';
 import 'features/panic/services/semantic_panic_search_service.dart';
 import 'ui/screens/home_screen.dart';
@@ -58,6 +62,20 @@ Future<void> main() async {
   reminderNotificationService = ReminderNotificationService();
   await reminderNotificationService.init();
 
+  // Settings Step 8 services.
+  settingsService = SettingsService();
+  await settingsService.init();
+  accessibilityService = AccessibilityService();
+  await accessibilityService.init();
+  dataExportService = DataExportService();
+  bibleCacheService = BibleCacheService(repository: bibleRepo);
+
+  // Ensure preferred translation is ready for quick Bible access.
+  await bibleRepo.ensureLoaded(settingsService.preferredTranslation);
+
+  // Keep plan selection synchronized with settings.
+  await readingPlanService.selectPlan(settingsService.selectedReadingPlan);
+
   // Panic Step 5 services.
   semanticPanicSearchService =
       SemanticPanicSearchService(repository: panicRepo);
@@ -80,17 +98,46 @@ Future<void> main() async {
 class BibleApp extends StatelessWidget {
   const BibleApp({super.key});
 
+  ThemeData _buildTheme(Brightness brightness) {
+    final seed = accessibilityService.highContrast
+        ? const Color(0xFF8A5B2E)
+        : const Color(0xFF6B4226);
+
+    final base = ThemeData(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: seed,
+        brightness: brightness,
+        contrastLevel: accessibilityService.highContrast ? 0.45 : 0,
+      ),
+      useMaterial3: true,
+      fontFamily: 'Georgia',
+    );
+
+    final textTheme = base.textTheme.apply(
+      fontSizeFactor: accessibilityService.fontScale,
+      bodyColor: accessibilityService.highContrast
+          ? (brightness == Brightness.dark ? Colors.white : Colors.black)
+          : null,
+      displayColor: accessibilityService.highContrast
+          ? (brightness == Brightness.dark ? Colors.white : Colors.black)
+          : null,
+    );
+
+    return base.copyWith(textTheme: textTheme);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Bible App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B4226)),
-        useMaterial3: true,
-        fontFamily: 'Georgia',
+    return ValueListenableBuilder<int>(
+      valueListenable: appPreferencesNotifier,
+      builder: (_, __, ___) => MaterialApp(
+        title: 'Bible App',
+        debugShowCheckedModeBanner: false,
+        themeMode: settingsService.themeMode,
+        theme: _buildTheme(Brightness.light),
+        darkTheme: _buildTheme(Brightness.dark),
+        home: const HomeScreen(),
       ),
-      home: const HomeScreen(),
     );
   }
 }

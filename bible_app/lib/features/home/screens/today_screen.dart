@@ -5,6 +5,7 @@ import '../../bible/screens/verse_reader_screen.dart';
 import '../../journal/models/verse_of_day.dart';
 import '../../journal/widgets/prayer_point_list.dart';
 import '../../journal/widgets/verse_of_day_card.dart';
+import '../../settings/settings_screen.dart';
 import '../services/reading_plan_service.dart';
 import '../services/reading_progress_service.dart';
 import '../widgets/continue_reading_card.dart';
@@ -92,12 +93,13 @@ class _TodayScreenState extends State<TodayScreen> {
     final assignment = _todayAssignment;
     if (assignment == null) return;
 
-    await bibleRepo.ensureLoaded('KJV');
+    final preferredTranslation = settingsService.preferredTranslation;
+    await bibleRepo.ensureLoaded(preferredTranslation);
 
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => VerseReaderScreen(
-          translation: 'KJV',
+          translation: preferredTranslation,
           bookName: assignment.book,
           initialChapter: assignment.chapter,
         ),
@@ -190,6 +192,13 @@ class _TodayScreenState extends State<TodayScreen> {
                       onSetReminder: _pickReminderTime,
                       onOpenPlanReading: _openTodayPlanReading,
                       onOpenPanic: () => tabSwitchRequest.value = 2,
+                      onOpenSettings: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -240,12 +249,14 @@ class _TodayActionsCard extends StatelessWidget {
     required this.onSetReminder,
     required this.onOpenPlanReading,
     required this.onOpenPanic,
+    required this.onOpenSettings,
   });
 
   final String reminderTimeText;
   final VoidCallback onSetReminder;
   final VoidCallback onOpenPlanReading;
   final VoidCallback onOpenPanic;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +302,15 @@ class _TodayActionsCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onOpenSettings,
+              icon: const Icon(Icons.settings_outlined),
+              label: const Text('Open Settings'),
+            ),
           ),
         ],
       ),
