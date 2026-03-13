@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/service_locator.dart';
 import '../../features/bible/screens/translation_selection_screen.dart';
+import '../../features/home/screens/today_screen.dart';
 import '../../features/journal/screens/journal_screen.dart';
-import '../../features/journal/screens/today_screen.dart';
 import '../../features/panic/panic_screen.dart';
 
 /// Root shell of the app.

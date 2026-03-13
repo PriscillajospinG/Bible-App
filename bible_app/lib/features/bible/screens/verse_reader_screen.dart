@@ -43,6 +43,11 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
     _chapter = widget.initialChapter;
     _chapterNums =
         bibleRepo.getChapterNumbers(widget.translation, widget.bookName);
+    readingProgressService.saveProgress(
+      widget.translation,
+      widget.bookName,
+      _chapter,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialVerse != null) {
@@ -68,6 +73,11 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
       _chapter = newChapter;
       _verseKeys.clear();
     });
+    readingProgressService.saveProgress(
+      widget.translation,
+      widget.bookName,
+      _chapter,
+    );
     _scrollController.jumpTo(0);
   }
 
