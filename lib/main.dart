@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'ai/gemma_model_service.dart';
 import 'ai/emotion_detection_service.dart';
+import 'ai/emotion_verses_repository.dart';
+import 'ai/fallback_bible_service.dart';
 import 'ai/bible_api_service.dart';
 import 'ai/verse_cache_service.dart';
 import 'ai/spiritual_guidance_service.dart';
@@ -31,6 +35,13 @@ import 'ui/screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables from .env asset.
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    debugPrint('dotenv load failed (continuing without env vars): $e');
+  }
 
   // Load core datasets with guarded startup.
   try {
@@ -126,7 +137,23 @@ Future<void> main() async {
   }
 
   // RAG pipeline services (Bible API + verse cache + guidance + reflection).
-  bibleApiService = BibleApiService();
+  // Shared emotion → verse map (loaded once, injected into both RAG services).
+  emotionVersesRepository = EmotionVersesRepository();
+  try {
+    await emotionVersesRepository.init();
+  } catch (e) {
+    debugPrint('EmotionVersesRepository init failed: $e');
+  }
+
+  // Offline-first Bible fallback (KJV flat JSON, no network needed).
+  fallbackBibleService = FallbackBibleService();
+  try {
+    await fallbackBibleService.init();
+  } catch (e) {
+    debugPrint('FallbackBibleService init failed: $e');
+  }
+
+  bibleApiService = BibleApiService(fallback: fallbackBibleService);
   verseCacheService = VerseCacheService();
   try {
     await verseCacheService.init();
@@ -137,24 +164,16 @@ Future<void> main() async {
     emotionDetection: emotionDetectionService,
     bibleApi: bibleApiService,
     verseCache: verseCacheService,
+    emotionVerses: emotionVersesRepository,
     modelService: gemmaModelService,
   );
-  try {
-    await spiritualGuidanceService.init();
-  } catch (e) {
-    debugPrint('SpiritualGuidanceService init failed: $e');
-  }
   journalReflectionService = JournalReflectionService(
     emotionDetection: emotionDetectionService,
     bibleApi: bibleApiService,
     verseCache: verseCacheService,
+    emotionVerses: emotionVersesRepository,
     modelService: gemmaModelService,
   );
-  try {
-    await journalReflectionService.init();
-  } catch (e) {
-    debugPrint('JournalReflectionService init failed: $e');
-  }
 
   // Settings Step 8 services.
   settingsService = SettingsService();

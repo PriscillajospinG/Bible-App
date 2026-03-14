@@ -26,11 +26,7 @@ class GuidanceResult {
     required this.guidance,
     this.usedAiModel = false,
   });
-}
-
-/// Executes the full RAG spiritual-guidance pipeline.
-///
-/// Pipeline:
+import '../data/models/bible_verse.dart';
 ///   user message
 ///   → EmotionDetectionService
 ///   → emotion → verse references (emotion_verses.json)

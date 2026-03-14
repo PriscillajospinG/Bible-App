@@ -23,11 +23,7 @@ class JournalReflectionResult {
     required this.prayerPoints,
     this.aiReflection,
   });
-}
-
-/// Analyses a journal entry and returns contextual prayer points.
-///
-/// Pipeline:
+import '../data/models/bible_verse.dart';
 ///   journal text
 ///   → EmotionDetectionService
 ///   → emotion → verse references (from emotion_verses.json)
