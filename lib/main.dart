@@ -13,6 +13,7 @@ import 'ai/journal_reflection_service.dart';
 import 'core/service_locator.dart';
 import 'data/repositories/bible_repository.dart';
 import 'data/services/favorites_service.dart';
+import 'data/services/panic_dataset_service.dart';
 import 'data/services/panic_search_service.dart';
 import 'features/journal/repositories/journal_repository.dart';
 import 'features/journal/services/journal_storage_service.dart';
@@ -30,6 +31,7 @@ import 'features/settings/bible_cache_service.dart';
 import 'features/settings/data_export_service.dart';
 import 'features/settings/settings_service.dart';
 import 'features/panic/services/panic_history_service.dart';
+import 'features/panic/services/panic_guidance_service.dart';
 import 'features/panic/services/semantic_panic_search_service.dart';
 import 'ui/screens/home_screen.dart';
 
@@ -73,7 +75,13 @@ Future<void> main() async {
   }
 
   // Wire up services that depend on repository data.
-  panicSearchService = PanicSearchService(repository: panicRepo);
+  panicDatasetService = PanicDatasetService();
+  try {
+    await panicDatasetService.init();
+  } catch (e) {
+    debugPrint('PanicDatasetService init failed: $e');
+  }
+  panicSearchService = PanicSearchService(datasetService: panicDatasetService);
   favoritesService = FavoritesService();
   try {
     await favoritesService.init();
@@ -211,6 +219,11 @@ Future<void> main() async {
   }
 
   // Panic Step 5 services.
+  panicGuidanceService = PanicGuidanceService(
+    emotionDetection: emotionDetectionService,
+    searchService: panicSearchService,
+    modelService: gemmaModelService,
+  );
   semanticPanicSearchService =
       SemanticPanicSearchService(repository: panicRepo);
   final panicHistory = PanicHistoryService();

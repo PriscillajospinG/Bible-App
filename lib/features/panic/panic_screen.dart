@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../ai/spiritual_guidance_service.dart';
 import '../../core/service_locator.dart';
+import '../../data/models/panic_entry.dart';
 import '../../data/models/bible_verse.dart';
 import '../../data/models/panic_response.dart';
 import 'panic_history_screen.dart';
-import 'services/semantic_panic_search_service.dart';
+import 'services/panic_guidance_service.dart';
 import 'services/text_processing_service.dart';
 import 'widgets/panic_input_field.dart';
 import 'widgets/panic_response_card.dart';
@@ -14,15 +14,13 @@ import 'widgets/panic_response_card.dart';
 /// Main Spiritual Guidance (Panic Button) screen.
 ///
 /// Step 5 upgrades over Step 2:
-///   • Uses [SemanticPanicSearchService] with canonical/stem matching.
+///   • Uses [PanicGuidanceService] end-to-end RAG pipeline.
 ///   • Auto-saves every session to [PanicHistoryService].
 ///   • "Copy response" — copies formatted guidance text to clipboard.
 ///   • Verse chips are tappable and open [_VerseBottomSheet].
 ///   • History icon in the AppBar navigates to [PanicHistoryScreen].
 class PanicScreen extends StatefulWidget {
-  const PanicScreen({super.key, required this.searchService});
-
-  final SemanticPanicSearchService searchService;
+  const PanicScreen({super.key});
 
   @override
   State<PanicScreen> createState() => _PanicScreenState();
@@ -32,7 +30,7 @@ class _PanicScreenState extends State<PanicScreen> {
   final _controller = TextEditingController();
   final _scrollKey = GlobalKey();
 
-  PanicResponse? _result;
+  PanicEntry? _result;
   bool _isLoading = false;
   String? _error;
   bool _savedToHistory = false;
@@ -74,48 +72,20 @@ class _PanicScreenState extends State<PanicScreen> {
     if (!mounted) return;
 
     try {
-      final response = widget.searchService.findBestResponse(message);
+      final PanicGuidanceResult result =
+          await panicGuidanceService.handleUserMessage(message);
 
       // Auto-save session to history.
-      await panicHistoryService.saveEntry(message, response.id);
+      await panicHistoryService.saveEntry(message, result.entry.id);
 
       setState(() {
-        _result = response;
+        _result = result.entry;
+        _aiFormattedResponse = result.responseText;
         _isLoading = false;
         _savedToHistory = true;
-        _isFormatting = true;
+        _isFormatting = false;
+        _ragVerses = const [];
       });
-
-      try {
-        // RAG pipeline: emotion → API verses → Gemma prompt → guidance
-        final GuidanceResult guidanceResult =
-            await spiritualGuidanceService.generateGuidance(message);
-        if (!mounted) return;
-        setState(() {
-          _aiFormattedResponse = guidanceResult.guidance;
-          _ragVerses = guidanceResult.verses;
-          _isFormatting = false;
-        });
-      } catch (_) {
-        // Fallback: legacy direct Gemma rewrite of structured JSONL response
-        try {
-          final formatted = await gemmaModelService.generateResponse(
-            userMessage: message,
-            panicResponse: response,
-          );
-          if (!mounted) return;
-          setState(() {
-            _aiFormattedResponse = formatted;
-            _isFormatting = false;
-          });
-        } catch (_) {
-          if (!mounted) return;
-          setState(() {
-            _aiFormattedResponse = null;
-            _isFormatting = false;
-          });
-        }
-      }
 
       await Future.delayed(const Duration(milliseconds: 120));
       if (mounted && _scrollKey.currentContext != null) {
@@ -174,7 +144,7 @@ class _PanicScreenState extends State<PanicScreen> {
     );
   }
 
-  static String _formatForClipboard(PanicResponse r) {
+  static String _formatForClipboard(PanicEntry r) {
     final c = r.response;
     final verses = c.recommendedVerses.join('\n');
     return '''
@@ -193,6 +163,24 @@ $verses
 Short Prayer
 ${c.shortPrayer}
 '''.trim();
+  }
+
+  static PanicResponse _toLegacyResponse(PanicEntry entry) {
+    return PanicResponse(
+      id: entry.id,
+      emotionTags: entry.emotionTags,
+      situationTags: entry.situationTags,
+      triggerExamples: entry.triggerExamples,
+      searchText: entry.searchText,
+      priorityWeight: entry.priorityWeight,
+      response: PanicResponseContent(
+        understandingUserQuery: entry.response.understandingUserQuery,
+        biblicalExplanation: entry.response.biblicalExplanation,
+        biblicalStoryExample: entry.response.biblicalStoryExample,
+        recommendedVerses: entry.response.recommendedVerses,
+        shortPrayer: entry.response.shortPrayer,
+      ),
+    );
   }
 
   @override
@@ -258,7 +246,7 @@ ${c.shortPrayer}
                 const SizedBox(height: 16),
                 SizedBox(key: _scrollKey, height: 0),
                 PanicResponseCard(
-                  panicResponse: _result!,
+                  panicResponse: _toLegacyResponse(_result!),
                   onVerseTap: _openVerse,
                 ),
                 const SizedBox(height: 8),

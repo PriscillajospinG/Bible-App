@@ -88,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             _TabNavigator(
               navigatorKey: _panicNavKey,
-              builder: () => PanicScreen(searchService: semanticPanicSearchService),
+              builder: () => const PanicScreen(),
             ),
             _TabNavigator(
               navigatorKey: _journalNavKey,

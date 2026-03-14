@@ -1,7 +1,3 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
-
 import '../data/models/bible_verse.dart';
 import 'bible_api_service.dart';
 import 'emotion_verses_repository.dart';
@@ -23,7 +19,8 @@ class JournalReflectionResult {
     required this.prayerPoints,
     this.aiReflection,
   });
-import '../data/models/bible_verse.dart';
+}
+
 ///   journal text
 ///   → EmotionDetectionService
 ///   → emotion → verse references (from emotion_verses.json)

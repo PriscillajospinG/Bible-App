@@ -1,24 +1,15 @@
-import '../models/panic_response.dart';
-import '../repositories/panic_response_repository.dart';
+import '../models/panic_entry.dart';
+import 'panic_dataset_service.dart';
 
-/// Offline similarity-based retrieval service.
+/// Retrieval service for panic JSONL entries.
 ///
-/// Scores every [PanicResponse] entry against a free-text [userMessage] using
-/// weighted word-overlap across four dataset fields, then multiplies by each
-/// entry's [PanicResponse.priorityWeight].
-///
-/// Scoring table (per entry):
-///   trigger_examples match  → +3 per example that shares ≥1 token
-///   emotion_tags match      → +2 per tag that shares ≥1 token
-///   situation_tags match    → +2 per tag that shares ≥1 token
-///   search_text overlap     → +1 per shared word
-///
-/// Final score = raw score × priority_weight
+/// Score = keyword overlap + emotion match + situation match,
+/// then lightly scaled by [PanicEntry.priorityWeight].
 class PanicSearchService {
-  PanicSearchService({required PanicResponseRepository repository})
-      : _repo = repository;
+  PanicSearchService({required PanicDatasetService datasetService})
+      : _datasetService = datasetService;
 
-  final PanicResponseRepository _repo;
+  final PanicDatasetService _datasetService;
 
   // ---------------------------------------------------------------------------
   // Stopwords — filtered out before comparison so they don't inflate scores.
@@ -41,26 +32,30 @@ class PanicSearchService {
   // Public API
   // ---------------------------------------------------------------------------
 
-  /// Returns the [PanicResponse] that best matches [userMessage].
-  ///
-  /// Falls back to the highest [PanicResponse.priorityWeight] entry when no
-  /// tokens overlap (e.g. a very short or unusual input).
-  PanicResponse findBestResponse(String userMessage) {
-    final entries = _repo.getAllPanicResponses();
+  /// Returns the [PanicEntry] that best matches [userMessage].
+  PanicEntry findBestResponse({
+    required String userMessage,
+    required List<String> detectedEmotions,
+  }) {
+    final entries = _datasetService.entries;
     if (entries.isEmpty) throw StateError('Panic dataset is empty.');
 
-    PanicResponse? best;
+    PanicEntry? best;
     double bestScore = -1;
 
     for (final entry in entries) {
-      final score = calculateScore(userMessage, entry);
+      final score = calculateScore(
+        userMessage: userMessage,
+        detectedEmotions: detectedEmotions,
+        entry: entry,
+      );
       if (score > bestScore) {
         bestScore = score;
         best = entry;
       }
     }
 
-    // Fallback: no meaningful word overlap — return highest-priority entry.
+    // Fallback: no meaningful overlap — return highest-priority entry.
     if (bestScore == 0) {
       return entries.reduce(
         (a, b) => a.priorityWeight >= b.priorityWeight ? a : b,
@@ -74,41 +69,44 @@ class PanicSearchService {
   // Scoring — public so it can be unit-tested independently
   // ---------------------------------------------------------------------------
 
-  /// Computes a weighted relevance score between [userMessage] and [entry].
-  double calculateScore(String userMessage, PanicResponse entry) {
+  /// Computes score = keyword overlap + emotion match + situation match.
+  double calculateScore({
+    required String userMessage,
+    required List<String> detectedEmotions,
+    required PanicEntry entry,
+  }) {
     final userTokens = _tokenize(userMessage);
     if (userTokens.isEmpty) return 0;
 
     double score = 0;
+    final detected = detectedEmotions.map((e) => e.toLowerCase()).toSet();
 
-    // trigger_examples: +3 per example sharing ≥1 token with the user message.
+    // Keyword overlap from trigger examples and search text.
     for (final trigger in entry.triggerExamples) {
-      if (userTokens.intersection(_tokenize(trigger)).isNotEmpty) {
-        score += 3;
-      }
+      score += userTokens.intersection(_tokenize(trigger)).length;
     }
+    score += userTokens.intersection(_tokenize(entry.searchText)).length;
 
-    // emotion_tags: +2 per tag sharing ≥1 token.
+    // Emotion match.
     for (final tag in entry.emotionTags) {
-      if (userTokens.intersection(_tokenize(tag)).isNotEmpty) {
+      if (detected.contains(tag)) {
+        score += 5;
+      } else if (userTokens.intersection(_tokenize(tag)).isNotEmpty) {
         score += 2;
       }
     }
 
-    // situation_tags: +2 per tag sharing ≥1 token.
+    // Situation match.
     for (final tag in entry.situationTags) {
-      if (userTokens.intersection(_tokenize(tag)).isNotEmpty) {
-        score += 2;
+      final overlap = userTokens.intersection(_tokenize(tag)).length;
+      if (overlap > 0) {
+        score += 3 + overlap;
       }
     }
 
-    // search_text: +1 per shared word.
-    final searchOverlap =
-        userTokens.intersection(_tokenize(entry.searchText));
-    score += searchOverlap.length;
-
-    // Weight by dataset-provided priority.
-    return score * entry.priorityWeight;
+    // Priority provides a slight preference but should not dominate matches.
+    final weighted = score * (0.8 + (entry.priorityWeight * 0.2));
+    return weighted;
   }
 
   // ---------------------------------------------------------------------------

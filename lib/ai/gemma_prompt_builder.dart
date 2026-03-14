@@ -1,4 +1,5 @@
 import '../data/models/bible_verse.dart';
+import '../data/models/panic_entry.dart';
 import '../data/models/panic_response.dart';
 
 class GemmaPromptBuilder {
@@ -111,5 +112,50 @@ $guidance
 Respond in a supportive and pastoral tone.
 Keep it concise (120-220 words), include 1 short prayer sentence, and do not invent any new facts.
 ''';
+  }
+
+  /// Builds the panic RAG prompt using a retrieved [PanicEntry].
+  static String buildPanicGuidancePrompt({
+    required String userMessage,
+    required String detectedEmotion,
+    required PanicEntry entry,
+  }) {
+    final verses = entry.response.recommendedVerses.isEmpty
+        ? 'None provided in dataset entry.'
+        : entry.response.recommendedVerses.join(', ');
+
+    return '''
+You are a compassionate Christian spiritual guide.
+
+User message:
+"$userMessage"
+
+Context:
+
+Emotion:
+$detectedEmotion
+
+Situation tags:
+${entry.situationTags.join(', ')}
+
+Biblical explanation:
+${entry.response.biblicalExplanation}
+
+Story example:
+${entry.response.biblicalStoryExample}
+
+Recommended verses:
+$verses
+
+Write a warm pastoral response.
+
+Include:
+- empathy
+- explanation
+- encouragement
+- a short prayer
+
+Keep it concise, gentle, and practical. Do not invent scripture references beyond the provided list.
+'''.trim();
   }
 }

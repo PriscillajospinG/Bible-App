@@ -11,6 +11,7 @@ import '../ai/verse_cache_service.dart';
 import '../data/repositories/bible_repository.dart';
 import '../data/repositories/panic_response_repository.dart';
 import '../data/services/favorites_service.dart';
+import '../data/services/panic_dataset_service.dart';
 import '../data/services/panic_search_service.dart';
 import '../features/journal/repositories/journal_repository.dart';
 import '../features/journal/services/prayer_generator_service.dart';
@@ -27,6 +28,7 @@ import '../features/settings/bible_cache_service.dart';
 import '../features/settings/data_export_service.dart';
 import '../features/settings/settings_service.dart';
 import '../features/panic/services/panic_history_service.dart';
+import '../features/panic/services/panic_guidance_service.dart';
 import '../features/panic/services/semantic_panic_search_service.dart';
 
 /// Global singleton service/repository instances used across the app.
@@ -35,7 +37,9 @@ import '../features/panic/services/semantic_panic_search_service.dart';
 /// so they are safe to access from any widget or service.
 final bibleRepo = BibleRepository();
 final panicRepo = PanicResponseRepository();
+late final PanicDatasetService panicDatasetService;
 late final PanicSearchService panicSearchService;
+late final PanicGuidanceService panicGuidanceService;
 late final FavoritesService favoritesService;
 
 // ── Journal ──────────────────────────────────────────────────────────────────
