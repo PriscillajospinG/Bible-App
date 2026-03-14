@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import '../data/models/bible_verse.dart';
 import 'bible_api_service.dart';
+import 'emotion_verses_repository.dart';
 import 'emotion_detection_service.dart';
 import 'gemma_model_service.dart';
 import 'gemma_prompt_builder.dart';
@@ -41,31 +41,18 @@ class JournalReflectionService {
     required BibleApiService bibleApi,
     required VerseCacheService verseCache,
     required GemmaModelService modelService,
+    required EmotionVersesRepository emotionVerses,
   })  : _emotionDetection = emotionDetection,
         _bibleApi = bibleApi,
         _verseCache = verseCache,
-        _modelService = modelService;
+        _modelService = modelService,
+        _emotionVerses = emotionVerses;
 
   final EmotionDetectionService _emotionDetection;
   final BibleApiService _bibleApi;
   final VerseCacheService _verseCache;
   final GemmaModelService _modelService;
-
-  Map<String, List<String>> _emotionVerses = {};
-
-  Future<void> init() async {
-    try {
-      final jsonStr =
-          await rootBundle.loadString('assets/data/emotion_verses.json');
-      _emotionVerses =
-          (jsonDecode(jsonStr) as Map<String, dynamic>).map(
-        (key, value) =>
-            MapEntry(key, (value as List<dynamic>).cast<String>()),
-      );
-    } catch (e) {
-      debugPrint('JournalReflectionService: load emotion_verses failed: $e');
-    }
-  }
+  final EmotionVersesRepository _emotionVerses;
 
   /// Analyses [journalText] and returns prayer points + relevant scripture.
   Future<JournalReflectionResult> analyzeEntry(String journalText) async {
@@ -74,9 +61,7 @@ class JournalReflectionService {
     final primaryEmotion = emotions.first;
 
     // 2. Get verse references for the dominant emotion
-    final references = _emotionVerses[primaryEmotion] ??
-        _emotionVerses['reflection'] ??
-        ['Psalm 46:10'];
+    final references = _emotionVerses.versesFor(primaryEmotion);
 
     // 3. Fetch top 2 verses (cache-first, API fallback)
     final verses = await _fetchVerses(references.take(2).toList());

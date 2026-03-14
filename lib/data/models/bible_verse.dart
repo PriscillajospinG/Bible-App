@@ -24,12 +24,24 @@ class BibleVerse {
       BibleVerse(verse: 0, text: text, reference: reference);
 
   factory BibleVerse.fromJson(Map<String, dynamic> json) {
+    final book      = json['book'] as String?;
+    final chapter   = (json['chapter'] as num?)?.toInt();
+    final verseNum  = (json['verse'] as num?)?.toInt() ?? 0;
+    final rawRef    = json['reference'] as String?;
+
+    // Compose a fallback reference from structural fields when the stored
+    // reference field is empty or absent (e.g. verses loaded from local JSON).
+    String reference = rawRef ?? '';
+    if (reference.isEmpty && book != null && chapter != null && verseNum > 0) {
+      reference = '$book $chapter:$verseNum';
+    }
+
     return BibleVerse(
-      verse: (json['verse'] as num?)?.toInt() ?? 0,
-      text: json['text'] as String? ?? '',
-      reference: json['reference'] as String? ?? '',
-      book: json['book'] as String?,
-      chapter: (json['chapter'] as num?)?.toInt(),
+      verse:       verseNum,
+      text:        json['text'] as String? ?? '',
+      reference:   reference,
+      book:        book,
+      chapter:     chapter,
       translation: json['translation'] as String?,
     );
   }

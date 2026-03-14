@@ -1,31 +1,45 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../data/models/bible_verse.dart';
+import 'fallback_bible_service.dart';
 
 /// Fetches Bible verse passages from the api.bible REST API.
 ///
-/// The API key is stored in-app for offline-capable lookup. For a public
-/// production release, proxy the key through your own backend.
+/// The API key is loaded at runtime from the .env asset (BIBLE_API_KEY).
+/// On any network failure the optional [FallbackBibleService] is queried first;
+/// only when that also fails is an exception propagated.
 class BibleApiService {
-  // ignore: constant_identifier_names
-  static const _apiKey = 'TEOJ7HhogXt0I3Gvqb2e2';
+  /// [fallback] is queried when the REST API fails or is unreachable.
+  BibleApiService({FallbackBibleService? fallback}) : _fallback = fallback;
+
+  final FallbackBibleService? _fallback;
 
   /// World English Bible (WEB) — freely available on api.bible.
   static const _bibleId = '9879dbb7cfe39e4d-01';
   static const _baseUrl = 'https://api.scripture.api.bible/v1';
   static const _timeout = Duration(seconds: 10);
 
+  /// API key resolved from the .env asset at runtime.
+  String get _apiKey {
+    try {
+      return dotenv.maybeGet('BIBLE_API_KEY') ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   /// Fetches a passage for [reference] such as "Philippians 4:6-7".
   ///
-  /// Returns a [BibleVerse] with the full passage text.
-  /// Throws if the reference cannot be parsed or the API call fails.
+  /// Network failures are caught and routed through [FallbackBibleService].
   Future<BibleVerse> fetchPassage(String reference) async {
     final passageId = _referenceToPassageId(reference);
     if (passageId == null) {
-      throw ArgumentError('Cannot parse Bible reference: "$reference"');
+      // Try fallback for unparseable references before giving up.
+      return _fallbackOrThrow(reference, 'Cannot parse Bible reference: "$reference"');
     }
 
     final uri = Uri.parse(
@@ -43,8 +57,10 @@ class BibleApiService {
         .timeout(_timeout);
 
     if (response.statusCode != 200) {
-      throw Exception(
-        'Bible API ${response.statusCode} for "$reference": ${response.body}',
+      debugPrint('BibleApiService: HTTP ${response.statusCode} for "$reference"');
+      return _fallbackOrThrow(
+        reference,
+        'Bible API ${response.statusCode}',
       );
     }
 
@@ -55,6 +71,18 @@ class BibleApiService {
 
     debugPrint('BibleApiService: fetched "$resolvedRef"');
     return BibleVerse.fromApiPassage(reference: resolvedRef, text: content);
+  }
+
+  /// Queries [FallbackBibleService] if available; otherwise throws [reason].
+  BibleVerse _fallbackOrThrow(String reference, String reason) {
+    if (_fallback != null) {
+      final local = _fallback!.lookup(reference);
+      if (local != null) {
+        debugPrint('BibleApiService: offline fallback served "$reference"');
+        return local;
+      }
+    }
+    throw Exception(reason);
   }
 
   /// Converts a human-readable reference to an api.bible passage ID.

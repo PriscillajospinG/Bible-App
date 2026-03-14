@@ -24,6 +24,10 @@ ios/Runner.xcworkspace/
 *.log
 
 # AI model weights
+# Environment secrets (use .env.example as a template)
+.env
+
+# AI model weights
 assets/models/*.gguf
 assets/models/*.bin
 assets/models/*.pt
