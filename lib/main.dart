@@ -98,7 +98,6 @@ Future<void> main() async {
   }
   journalRepo = JournalRepository(storage: journalStorage);
   emotionDetectionService = EmotionDetectionService();
-  verseSuggestionService = VerseSuggestionService(bibleRepo: bibleRepo);
   prayerGeneratorService = PrayerGeneratorService();
 
   // Bible Step 6 services.
@@ -164,13 +163,23 @@ Future<void> main() async {
     debugPrint('FallbackBibleService init failed: $e');
   }
 
-  bibleApiService = BibleApiService(fallback: fallbackBibleService);
+  // Verse cache must be initialized before BibleApiService so it can be injected.
   verseCacheService = VerseCacheService();
   try {
     await verseCacheService.init();
   } catch (e) {
     debugPrint('VerseCacheService init failed: $e');
   }
+
+  bibleApiService = BibleApiService(fallback: fallbackBibleService, cache: verseCacheService);
+
+  // verseSuggestionService is wired here (after bibleApiService) so it can
+  // use the API for verse lookups with built-in cache + fallback.
+  verseSuggestionService = VerseSuggestionService(
+    bibleRepo: bibleRepo,
+    bibleApi: bibleApiService,
+  );
+
   spiritualGuidanceService = SpiritualGuidanceService(
     emotionDetection: emotionDetectionService,
     bibleApi: bibleApiService,
@@ -226,6 +235,7 @@ Future<void> main() async {
     emotionDetection: emotionDetectionService,
     searchService: panicSearchService,
     modelService: gemmaModelService,
+    bibleApi: bibleApiService,
   );
   semanticPanicSearchService =
       SemanticPanicSearchService(repository: panicRepo);

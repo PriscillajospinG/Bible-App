@@ -115,14 +115,26 @@ Keep it concise (120-220 words), include 1 short prayer sentence, and do not inv
   }
 
   /// Builds the panic RAG prompt using a retrieved [PanicEntry].
+  ///
+  /// If [fetchedVerses] are provided (fetched via [BibleApiService]), their
+  /// full text is included in the prompt; otherwise only the reference strings
+  /// from the dataset entry are listed.
   static String buildPanicGuidancePrompt({
     required String userMessage,
     required String detectedEmotion,
     required PanicEntry entry,
+    List<BibleVerse> fetchedVerses = const [],
   }) {
-    final verses = entry.response.recommendedVerses.isEmpty
-        ? 'None provided in dataset entry.'
-        : entry.response.recommendedVerses.join(', ');
+    final String verses;
+    if (fetchedVerses.isNotEmpty) {
+      verses = fetchedVerses
+          .map((v) => '${v.reference}\n"${v.text.trim()}"')
+          .join('\n\n');
+    } else if (entry.response.recommendedVerses.isEmpty) {
+      verses = 'None provided in dataset entry.';
+    } else {
+      verses = entry.response.recommendedVerses.join(', ');
+    }
 
     return '''
 You are a compassionate Christian spiritual guide.

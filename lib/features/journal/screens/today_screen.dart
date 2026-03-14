@@ -47,13 +47,13 @@ class _TodayScreenState extends State<TodayScreen> {
 
   void _onRefresh() => _loadTodayData();
 
-  void _loadTodayData() {
+  Future<void> _loadTodayData() async {
     final latestEntry = journalRepo.getLatestEntry();
     final emotions = latestEntry != null && latestEntry.detectedEmotions.isNotEmpty
         ? latestEntry.detectedEmotions
         : ['reflection'];
 
-    final verse = verseSuggestionService.getVerseForEmotion(emotions.first);
+    final verse = await verseSuggestionService.getVerseForEmotion(emotions.first);
     final prayers = prayerGeneratorService.generatePrayerPoints(emotions);
 
     final dayOfYear = DateTime.now().difference(

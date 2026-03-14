@@ -54,7 +54,7 @@ class _TodayScreenState extends State<TodayScreen> {
         ? latestEntry.detectedEmotions
         : ['reflection'];
 
-    final verse = verseSuggestionService.getVerseForEmotion(emotions.first);
+    final verse = await verseSuggestionService.getVerseForEmotion(emotions.first);
     final prayers = prayerGeneratorService.generatePrayerPoints(emotions);
 
     final position = await readingProgressService.getLastReadingPosition();

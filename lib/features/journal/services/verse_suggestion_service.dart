@@ -1,14 +1,17 @@
+import '../../../ai/bible_api_service.dart';
 import '../../../data/repositories/bible_repository.dart';
 import '../models/verse_of_day.dart';
 
-/// Maps emotional states to specific KJV Bible verses.
+/// Maps emotional states to specific Bible verses.
 ///
-/// Verse texts are fetched from [BibleRepository] (KJV). Hard-coded fallback
-/// texts are used when the repository lookup fails (e.g. during cold start).
+/// Priority: API (via [BibleApiService], which includes caching) →
+/// local [BibleRepository] → hard-coded KJV fallback texts.
 class VerseSuggestionService {
-  VerseSuggestionService({required this.bibleRepo});
+  VerseSuggestionService({required this.bibleRepo, BibleApiService? bibleApi})
+      : _bibleApi = bibleApi;
 
   final BibleRepository bibleRepo;
+  final BibleApiService? _bibleApi;
 
   // ── Emotion → verse reference mapping ────────────────────────────────────
 
@@ -102,14 +105,30 @@ class VerseSuggestionService {
   /// Returns a [VerseOfDay] matched to [emotion].
   ///
   /// Falls back to the 'reflection' verse when [emotion] has no mapping.
-  VerseOfDay getVerseForEmotion(String emotion) {
+  /// Tries the remote API (with built-in cache) first; on failure falls back to
+  /// the local [BibleRepository] and finally to the hard-coded KJV texts.
+  Future<VerseOfDay> getVerseForEmotion(String emotion) async {
     final ref = _emotionMap[emotion] ?? _emotionMap['reflection']!;
     final resolvedEmotion =
         _emotionMap.containsKey(emotion) ? emotion : 'reflection';
 
     final reference = '${ref.book} ${ref.chapter}:${ref.verse}';
 
-    // Attempt live lookup from repository.
+    // 1. Try API (which transparently uses the verse cache).
+    if (_bibleApi != null) {
+      try {
+        final apiVerse = await _bibleApi!.fetchVerse(reference);
+        return VerseOfDay(
+          reference: apiVerse.reference,
+          text: apiVerse.text,
+          emotion: resolvedEmotion,
+        );
+      } catch (_) {
+        // Fall through to local lookup.
+      }
+    }
+
+    // 2. Attempt local BibleRepository lookup.
     String text;
     try {
       final verse = bibleRepo.getVerse('KJV', ref.book, ref.chapter, ref.verse);

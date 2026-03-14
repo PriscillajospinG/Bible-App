@@ -6,17 +6,25 @@ import 'package:http/http.dart' as http;
 
 import '../data/models/bible_verse.dart';
 import 'fallback_bible_service.dart';
+import 'verse_cache_service.dart';
 
 /// Fetches Bible verse passages from the api.bible REST API.
 ///
 /// The API key is loaded at runtime from the .env asset (BIBLE_API_KEY).
 /// On any network failure the optional [FallbackBibleService] is queried first;
 /// only when that also fails is an exception propagated.
+///
+/// Built-in caching: if [cache] is provided, verse results are persisted via
+/// [VerseCacheService] (SharedPreferences) so repeat lookups skip the network.
 class BibleApiService {
   /// [fallback] is queried when the REST API fails or is unreachable.
-  BibleApiService({FallbackBibleService? fallback}) : _fallback = fallback;
+  /// [cache] is used to persist and retrieve previously fetched verses.
+  BibleApiService({FallbackBibleService? fallback, VerseCacheService? cache})
+      : _fallback = fallback,
+        _cache = cache;
 
   final FallbackBibleService? _fallback;
+  final VerseCacheService? _cache;
 
   /// World English Bible (WEB) — freely available on api.bible.
   static const _bibleId = '9879dbb7cfe39e4d-01';
@@ -32,9 +40,23 @@ class BibleApiService {
     }
   }
 
+  /// Primary method: fetches [reference] using cache → API → fallback chain.
+  ///
+  /// Results are stored in [VerseCacheService] so subsequent calls for the
+  /// same reference return instantly without a network round-trip.
+  Future<BibleVerse> fetchVerse(String reference) async {
+    final cached = _cache?.getCached(reference);
+    if (cached != null) return cached;
+
+    final verse = await fetchPassage(reference);
+    await _cache?.cache(reference, verse);
+    return verse;
+  }
+
   /// Fetches a passage for [reference] such as "Philippians 4:6-7".
   ///
   /// Network failures are caught and routed through [FallbackBibleService].
+  /// Prefer [fetchVerse] for individual verse lookups; it adds caching.
   Future<BibleVerse> fetchPassage(String reference) async {
     final passageId = _referenceToPassageId(reference);
     if (passageId == null) {
