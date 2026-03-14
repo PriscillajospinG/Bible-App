@@ -24,7 +24,7 @@ import 'features/bible/services/bookmark_service.dart';
 import 'features/bible/services/highlight_service.dart';
 import 'features/home/services/reading_plan_service.dart';
 import 'features/home/services/reading_progress_service.dart';
-import 'features/home/services/reminder_notification_service.dart';
+import 'features/home/services/reminder_service.dart';
 import 'features/home/services/streak_service.dart';
 import 'features/settings/accessibility_service.dart';
 import 'features/settings/bible_cache_service.dart';
@@ -127,11 +127,14 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Streak update failed: $e');
   }
-  reminderNotificationService = ReminderNotificationService();
+  reminderService = ReminderService();
   try {
-    await reminderNotificationService.init();
+    await reminderService.init(
+      onOpenToday: () => tabSwitchRequest.value = 0,
+    );
+    await reminderService.rescheduleIfEnabled();
   } catch (e) {
-    debugPrint('Reminder notification init failed: $e');
+    debugPrint('Reminder service init failed: $e');
   }
 
   // Local AI (Gemma) service.

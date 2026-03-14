@@ -57,7 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _reminderTime = picked);
     await settingsService.saveReminderTime(picked);
-    await reminderNotificationService.scheduleDailyReminder(picked);
+    await reminderService.updateReminder(enabled: true, time: picked);
     appPreferencesNotifier.value++;
   }
 

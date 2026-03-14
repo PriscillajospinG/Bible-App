@@ -10,6 +10,7 @@ import '../services/reading_plan_service.dart';
 import '../services/reading_progress_service.dart';
 import '../widgets/continue_reading_card.dart';
 import '../widgets/reading_plan_progress_card.dart';
+import '../widgets/reminder_time_picker.dart';
 import '../widgets/streak_display_card.dart';
 
 class TodayScreen extends StatefulWidget {
@@ -29,7 +30,8 @@ class _TodayScreenState extends State<TodayScreen> {
   ReadingPlanDay? _todayAssignment;
   ReadingPlan? _activePlan;
   late int _streak;
-  TimeOfDay? _reminderTime;
+  TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
+  bool _reminderEnabled = false;
 
   @override
   void initState() {
@@ -58,7 +60,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final position = await readingProgressService.getLastReadingPosition();
     final progress = await readingPlanService.getProgress();
     final assignment = await readingPlanService.getTodayAssignment();
-    final reminder = await reminderNotificationService.getReminderTime();
+    final reminderSettings = await reminderService.loadSettings();
 
     setState(() {
       _verse = verse;
@@ -68,7 +70,8 @@ class _TodayScreenState extends State<TodayScreen> {
       _todayAssignment = assignment;
       _activePlan = readingPlanService.getPlanByName(progress.planName);
       _streak = streakService.getCurrentStreak();
-      _reminderTime = reminder;
+      _reminderTime = reminderSettings.time;
+      _reminderEnabled = reminderSettings.enabled;
       _isLoading = false;
     });
   }
@@ -121,22 +124,20 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  Future<void> _pickReminderTime() async {
-    final initial = _reminderTime ?? const TimeOfDay(hour: 8, minute: 0);
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: initial,
-      helpText: 'Choose daily reminder time',
-    );
-    if (picked == null) return;
-
-    await reminderNotificationService.scheduleDailyReminder(picked);
+  Future<void> _onReminderChanged(bool enabled, TimeOfDay time) async {
+    await reminderService.updateReminder(enabled: enabled, time: time);
     if (!mounted) return;
+    setState(() {
+      _reminderEnabled = enabled;
+      _reminderTime = time;
+    });
 
-    setState(() => _reminderTime = picked);
+    final message = enabled
+        ? 'Daily reminder enabled for ${time.format(context)}.'
+        : 'Daily reminder disabled.';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Daily reminder set for ${picked.format(context)}.'),
+        content: Text(message),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -188,10 +189,12 @@ class _TodayScreenState extends State<TodayScreen> {
                       ),
                     const SizedBox(height: 10),
                     _TodayActionsCard(
-                      reminderTimeText: _reminderTime?.format(context) ?? '--:--',
-                      onSetReminder: _pickReminderTime,
+                      reminderEnabled: _reminderEnabled,
+                      reminderTime: _reminderTime,
+                      onReminderChanged: _onReminderChanged,
                       onOpenPlanReading: _openTodayPlanReading,
                       onOpenPanic: () => tabSwitchRequest.value = 2,
+                      onOpenJournal: () => tabSwitchRequest.value = 3,
                       onOpenSettings: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -245,17 +248,21 @@ class _Header extends StatelessWidget {
 
 class _TodayActionsCard extends StatelessWidget {
   const _TodayActionsCard({
-    required this.reminderTimeText,
-    required this.onSetReminder,
+    required this.reminderEnabled,
+    required this.reminderTime,
+    required this.onReminderChanged,
     required this.onOpenPlanReading,
     required this.onOpenPanic,
+    required this.onOpenJournal,
     required this.onOpenSettings,
   });
 
-  final String reminderTimeText;
-  final VoidCallback onSetReminder;
+  final bool reminderEnabled;
+  final TimeOfDay reminderTime;
+  final Future<void> Function(bool enabled, TimeOfDay time) onReminderChanged;
   final VoidCallback onOpenPlanReading;
   final VoidCallback onOpenPanic;
+  final VoidCallback onOpenJournal;
   final VoidCallback onOpenSettings;
 
   @override
@@ -270,15 +277,10 @@ class _TodayActionsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.notifications_active_outlined),
-            title: const Text('Daily Reminder'),
-            subtitle: Text('Current: $reminderTimeText'),
-            trailing: TextButton(
-              onPressed: onSetReminder,
-              child: const Text('Set Time'),
-            ),
+          ReminderTimePicker(
+            enabled: reminderEnabled,
+            selectedTime: reminderTime,
+            onChanged: onReminderChanged,
           ),
           const SizedBox(height: 8),
           Row(
@@ -302,6 +304,15 @@ class _TodayActionsCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: onOpenJournal,
+              icon: const Icon(Icons.edit_note_rounded),
+              label: const Text('Open Journal'),
+            ),
           ),
           const SizedBox(height: 10),
           Align(
