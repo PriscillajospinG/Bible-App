@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'ai/gemma_model_service.dart';
 import 'ai/emotion_detection_service.dart';
+import 'ai/bible_api_service.dart';
+import 'ai/verse_cache_service.dart';
+import 'ai/spiritual_guidance_service.dart';
+import 'ai/journal_reflection_service.dart';
 import 'core/service_locator.dart';
 import 'data/repositories/bible_repository.dart';
 import 'data/services/favorites_service.dart';
@@ -119,6 +123,37 @@ Future<void> main() async {
   } catch (e) {
     // Keep app fully functional even if model/native engine isn't ready yet.
     debugPrint('Gemma model not initialized: $e');
+  }
+
+  // RAG pipeline services (Bible API + verse cache + guidance + reflection).
+  bibleApiService = BibleApiService();
+  verseCacheService = VerseCacheService();
+  try {
+    await verseCacheService.init();
+  } catch (e) {
+    debugPrint('VerseCacheService init failed: $e');
+  }
+  spiritualGuidanceService = SpiritualGuidanceService(
+    emotionDetection: emotionDetectionService,
+    bibleApi: bibleApiService,
+    verseCache: verseCacheService,
+    modelService: gemmaModelService,
+  );
+  try {
+    await spiritualGuidanceService.init();
+  } catch (e) {
+    debugPrint('SpiritualGuidanceService init failed: $e');
+  }
+  journalReflectionService = JournalReflectionService(
+    emotionDetection: emotionDetectionService,
+    bibleApi: bibleApiService,
+    verseCache: verseCacheService,
+    modelService: gemmaModelService,
+  );
+  try {
+    await journalReflectionService.init();
+  } catch (e) {
+    debugPrint('JournalReflectionService init failed: $e');
   }
 
   // Settings Step 8 services.

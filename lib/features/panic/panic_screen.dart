@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../ai/spiritual_guidance_service.dart';
 import '../../core/service_locator.dart';
+import '../../data/models/bible_verse.dart';
 import '../../data/models/panic_response.dart';
 import 'panic_history_screen.dart';
 import 'services/semantic_panic_search_service.dart';
@@ -36,6 +38,9 @@ class _PanicScreenState extends State<PanicScreen> {
   bool _savedToHistory = false;
   String? _aiFormattedResponse;
   bool _isFormatting = false;
+
+  // RAG pipeline result
+  List<BibleVerse> _ragVerses = const [];
 
   @override
   void dispose() {
@@ -82,21 +87,34 @@ class _PanicScreenState extends State<PanicScreen> {
       });
 
       try {
-        final formatted = await gemmaModelService.generateResponse(
-          userMessage: message,
-          panicResponse: response,
-        );
+        // RAG pipeline: emotion → API verses → Gemma prompt → guidance
+        final GuidanceResult guidanceResult =
+            await spiritualGuidanceService.generateGuidance(message);
         if (!mounted) return;
         setState(() {
-          _aiFormattedResponse = formatted;
+          _aiFormattedResponse = guidanceResult.guidance;
+          _ragVerses = guidanceResult.verses;
           _isFormatting = false;
         });
       } catch (_) {
-        if (!mounted) return;
-        setState(() {
-          _aiFormattedResponse = null;
-          _isFormatting = false;
-        });
+        // Fallback: legacy direct Gemma rewrite of structured JSONL response
+        try {
+          final formatted = await gemmaModelService.generateResponse(
+            userMessage: message,
+            panicResponse: response,
+          );
+          if (!mounted) return;
+          setState(() {
+            _aiFormattedResponse = formatted;
+            _isFormatting = false;
+          });
+        } catch (_) {
+          if (!mounted) return;
+          setState(() {
+            _aiFormattedResponse = null;
+            _isFormatting = false;
+          });
+        }
       }
 
       await Future.delayed(const Duration(milliseconds: 120));
@@ -122,6 +140,7 @@ class _PanicScreenState extends State<PanicScreen> {
       _savedToHistory = false;
       _aiFormattedResponse = null;
       _isFormatting = false;
+      _ragVerses = const [];
     });
     _controller.clear();
   }
@@ -232,6 +251,10 @@ ${c.shortPrayer}
                   text: _aiFormattedResponse,
                   isLoading: _isFormatting,
                 ),
+                if (_ragVerses.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _ScriptureContextCard(verses: _ragVerses),
+                ],
                 const SizedBox(height: 16),
                 SizedBox(key: _scrollKey, height: 0),
                 PanicResponseCard(
@@ -648,6 +671,77 @@ class _VerseBottomSheetState extends State<_VerseBottomSheet> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Scripture context card – shows API-fetched verses for the detected emotion
+// ---------------------------------------------------------------------------
+
+class _ScriptureContextCard extends StatelessWidget {
+  const _ScriptureContextCard({required this.verses});
+
+  final List<BibleVerse> verses;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0E9D6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD4C4A0)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_stories_rounded,
+                  size: 16, color: Color(0xFF6B4226)),
+              const SizedBox(width: 6),
+              const Text(
+                'Scripture Context',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: Color(0xFF6B4226),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...verses.map(
+            (v) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    v.reference,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: Color(0xFF8A5B2E),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    v.text,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF3B2A1A),
+                      fontStyle: FontStyle.italic,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -61,6 +61,20 @@ class GemmaModelService {
     return output.trim();
   }
 
+  /// Runs inference with a raw [prompt] string.
+  ///
+  /// Use this for RAG-pipeline calls where the prompt is pre-built by
+  /// [GemmaPromptBuilder]. Returns an empty string if the model produces
+  /// no output.
+  Future<String> generateFromPrompt(String prompt) async {
+    if (!_initialized) {
+      await initializeModel();
+    }
+    final output =
+        await Isolate.run(() => GemmaEngine.instance.generateText(prompt));
+    return output.trim();
+  }
+
   String get modelPathOrEmpty => _modelFilePath ?? '';
 
   Future<String> _copyModelIfNeeded() async {

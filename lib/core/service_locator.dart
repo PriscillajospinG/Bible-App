@@ -1,7 +1,11 @@
 import 'package:flutter/foundation.dart';
 
-import '../ai/gemma_model_service.dart';
+import '../ai/bible_api_service.dart';
 import '../ai/emotion_detection_service.dart';
+import '../ai/gemma_model_service.dart';
+import '../ai/journal_reflection_service.dart';
+import '../ai/spiritual_guidance_service.dart';
+import '../ai/verse_cache_service.dart';
 import '../data/repositories/bible_repository.dart';
 import '../data/repositories/panic_response_repository.dart';
 import '../data/services/favorites_service.dart';
@@ -57,6 +61,12 @@ late final ReminderNotificationService reminderNotificationService;
 
 // ── Local AI Step 9 ─────────────────────────────────────────────────────────
 late final GemmaModelService gemmaModelService;
+
+// ── RAG Pipeline ─────────────────────────────────────────────────────────────
+late final BibleApiService bibleApiService;
+late final VerseCacheService verseCacheService;
+late final SpiritualGuidanceService spiritualGuidanceService;
+late final JournalReflectionService journalReflectionService;
 
 // ── Settings Step 8 ──────────────────────────────────────────────────────────
 late final SettingsService settingsService;

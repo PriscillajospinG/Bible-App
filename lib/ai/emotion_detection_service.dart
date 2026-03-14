@@ -114,4 +114,7 @@ class EmotionDetectionService {
 
     return found.isEmpty ? ['reflection'] : found;
   }
+
+  /// Returns the single most prominent emotion detected in [text].
+  String detectPrimaryEmotion(String text) => detectEmotions(text).first;
 }
