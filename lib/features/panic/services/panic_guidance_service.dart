@@ -102,10 +102,10 @@ class PanicGuidanceService {
 
     final String verseLine;
     if (fetchedVerses.isNotEmpty) {
-      verseLine = '\n\nVerses:\n' +
-          fetchedVerses
-              .map((v) => '${v.reference} — ${v.text.trim()}')
-              .join('\n');
+      final lines = fetchedVerses
+          .map((v) => '${v.reference} — ${v.text.trim()}')
+          .join('\n');
+      verseLine = '\n\nVerses:\n$lines';
     } else if (c.recommendedVerses.isEmpty) {
       verseLine = '';
     } else {
