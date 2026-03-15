@@ -146,8 +146,8 @@ Future<void> main() async {
   // Local AI (Gemma) service.
   gemmaModelService = GemmaModelService();
   try {
-    await gemmaModelService.initializeModel();
-    debugPrint('Gemma model initialized at ${gemmaModelService.modelPathOrEmpty}');
+    await gemmaModelService.initialize();
+    debugPrint('Gemma model initialized successfully');
   } catch (e) {
     // Keep app fully functional even if model/native engine isn't ready yet.
     debugPrint('Gemma model not initialized: $e');

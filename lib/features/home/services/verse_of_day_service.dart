@@ -33,8 +33,10 @@ class VerseOfDayService {
     }
 
     final emotion = emotions.isEmpty ? 'peace' : emotions.first;
-    final resolved = emotion.toLowerCase() == 'reflection' ? 'peace' : emotion;
-    final verse = await _verseSuggestionService.getVerseForEmotion(resolved);
+    final verse = await _verseSuggestionService.getVerseForEmotionOnDate(
+      emotion,
+      DateTime.now(),
+    );
 
     await prefs.setString(_dateKey, today);
     await prefs.setString(_verseKey, jsonEncode(verse.toJson()));

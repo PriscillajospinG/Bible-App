@@ -18,6 +18,8 @@ class GemmaModelService {
 
   bool get isInitialized => _initialized;
 
+  Future<void> initialize() => initializeModel();
+
   Future<void> initializeModel() async {
     if (_initialized) return;
 
@@ -39,6 +41,7 @@ class GemmaModelService {
 
     _modelFilePath = modelPath;
     _initialized = true;
+    debugPrint('Gemma model initialized successfully');
   }
 
   Future<String> rewriteStructuredResponse({

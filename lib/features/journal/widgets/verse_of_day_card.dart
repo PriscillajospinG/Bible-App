@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/verse_of_day.dart';
 
-/// Displays the day's verse suggestion with its reference and emotion context.
+/// Displays the day's verse suggestion with its reference.
 class VerseOfDayCard extends StatelessWidget {
   const VerseOfDayCard({super.key, required this.verse});
 
@@ -46,8 +46,6 @@ class VerseOfDayCard extends StatelessWidget {
                   letterSpacing: 1.2,
                 ),
               ),
-              const Spacer(),
-              _EmotionBadge(verse.emotion),
             ],
           ),
           const SizedBox(height: 14),
@@ -75,31 +73,6 @@ class VerseOfDayCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EmotionBadge extends StatelessWidget {
-  const _EmotionBadge(this.emotion);
-
-  final String emotion;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.18),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        emotion,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

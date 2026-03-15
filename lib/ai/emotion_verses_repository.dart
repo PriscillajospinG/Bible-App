@@ -33,10 +33,10 @@ class EmotionVersesRepository {
 
   /// Returns verse references for [emotion].
   ///
-  /// Falls back to the `reflection` entry, then a hard-coded default.
+    /// Falls back to the `peace` entry, then a hard-coded default.
   List<String> versesFor(String emotion) =>
       _data[emotion] ??
-      _data['reflection'] ??
+      _data['peace'] ??
       const ['Psalm 46:10'];
 
   bool get isLoaded => _loaded;

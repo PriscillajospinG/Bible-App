@@ -112,7 +112,7 @@ class EmotionDetectionService {
       }
     }
 
-    return found.isEmpty ? ['reflection'] : found;
+    return found.isEmpty ? ['peace'] : found;
   }
 
   /// Returns the single most prominent emotion detected in [text].

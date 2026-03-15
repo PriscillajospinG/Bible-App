@@ -2,10 +2,10 @@ import '../../../ai/bible_api_service.dart';
 import '../../../data/repositories/bible_repository.dart';
 import '../models/verse_of_day.dart';
 
-/// Maps emotional states to specific Bible verses.
+/// Maps emotional states to a rotating set of Bible verses.
 ///
-/// Priority: API (via [BibleApiService], which includes caching) →
-/// local [BibleRepository] → hard-coded KJV fallback texts.
+/// Priority: API (via [BibleApiService], which includes caching) ->
+/// local [BibleRepository] -> hard-coded KJV fallback texts.
 class VerseSuggestionService {
   VerseSuggestionService({required this.bibleRepo, BibleApiService? bibleApi})
       : _bibleApi = bibleApi;
@@ -13,30 +13,26 @@ class VerseSuggestionService {
   final BibleRepository bibleRepo;
   final BibleApiService? _bibleApi;
 
-  // ── Emotion → verse reference mapping ────────────────────────────────────
-
-  static const _emotionMap = <String, ({String book, int chapter, int verse})>{
-    'anxiety': (book: 'Philippians', chapter: 4, verse: 6),
-    'fear': (book: 'Isaiah', chapter: 41, verse: 10),
-    'sadness': (book: 'Psalms', chapter: 34, verse: 18),
-    'loneliness': (book: 'Matthew', chapter: 28, verse: 20),
-    'anger': (book: 'James', chapter: 1, verse: 19),
-    'temptation': (book: '1 Corinthians', chapter: 10, verse: 13),
-    'guilt': (book: '1 John', chapter: 1, verse: 9),
-    'hopelessness': (book: 'Jeremiah', chapter: 29, verse: 11),
-    'confusion': (book: 'Proverbs', chapter: 3, verse: 5),
-    'gratitude': (book: 'Psalms', chapter: 100, verse: 4),
-    'joy': (book: 'Psalms', chapter: 32, verse: 11),
-    'doubt': (book: 'Mark', chapter: 11, verse: 24),
-    'exhaustion': (book: 'Isaiah', chapter: 40, verse: 31),
-    'reflection': (book: 'Psalms', chapter: 46, verse: 10),
-    'grief': (book: 'Romans', chapter: 8, verse: 28),
-    'faithfulness': (book: 'Lamentations', chapter: 3, verse: 23),
-    'endurance': (book: 'Hebrews', chapter: 12, verse: 1),
-    'strength': (book: 'Psalms', chapter: 27, verse: 1),
+  static const _emotionReferences = <String, List<String>>{
+    'anxiety': ['Philippians 4:6', '1 Peter 5:7', 'Matthew 6:34'],
+    'fear': ['Isaiah 41:10', 'Psalms 56:3', '2 Timothy 1:7'],
+    'sadness': ['Psalms 34:18', 'John 14:27', 'Psalms 147:3'],
+    'loneliness': ['Matthew 28:20', 'Deuteronomy 31:6', 'Psalms 139:7'],
+    'anger': ['James 1:19', 'Ephesians 4:26', 'Proverbs 15:1'],
+    'temptation': ['1 Corinthians 10:13', 'James 4:7', 'Psalms 119:11'],
+    'guilt': ['1 John 1:9', 'Romans 8:1', 'Psalms 103:12'],
+    'hopelessness': ['Jeremiah 29:11', 'Romans 15:13', 'Isaiah 40:31'],
+    'confusion': ['Proverbs 3:5', 'James 1:5', 'Psalms 32:8'],
+    'gratitude': ['Psalms 100:4', '1 Thessalonians 5:18', 'Colossians 3:15'],
+    'joy': ['Psalms 32:11', 'Nehemiah 8:10', 'John 15:11'],
+    'doubt': ['Mark 11:24', 'Mark 9:24', 'Hebrews 11:1'],
+    'exhaustion': ['Isaiah 40:31', 'Matthew 11:28', 'Psalms 23:1'],
+    'peace': ['Psalms 46:10', 'Philippians 4:7', 'John 16:33'],
+    'grief': ['Romans 8:28', 'Psalms 30:5', 'Revelation 21:4'],
+    'faithfulness': ['Lamentations 3:23', 'Hebrews 10:23', 'Psalms 89:1'],
+    'endurance': ['Hebrews 12:1', 'Romans 5:3', 'Galatians 6:9'],
+    'strength': ['Psalms 27:1', 'Philippians 4:13', 'Psalms 18:2'],
   };
-
-  // ── Verified KJV fallback texts (stripped of curly-brace markers) ─────────
 
   static const _fallbacks = <String, String>{
     'Philippians 4:6':
@@ -100,43 +96,54 @@ class VerseSuggestionService {
         'the strength of my life; of whom shall I be afraid?',
   };
 
-  // ── Public API ────────────────────────────────────────────────────────────
-
-  /// Returns a [VerseOfDay] matched to [emotion].
-  ///
-  /// Falls back to the 'reflection' verse when [emotion] has no mapping.
-  /// Tries the remote API (with built-in cache) first; on failure falls back to
-  /// the local [BibleRepository] and finally to the hard-coded KJV texts.
+  /// Returns a [VerseOfDay] for [emotion], rotating by the current date.
   Future<VerseOfDay> getVerseForEmotion(String emotion) async {
-    final ref = _emotionMap[emotion] ?? _emotionMap['reflection']!;
+    return getVerseForEmotionOnDate(emotion, DateTime.now());
+  }
+
+  /// Returns a date-based verse rotation for [emotion].
+  Future<VerseOfDay> getVerseForEmotionOnDate(String emotion, DateTime date) async {
     final resolvedEmotion =
-        _emotionMap.containsKey(emotion) ? emotion : 'reflection';
+        _emotionReferences.containsKey(emotion) ? emotion : 'peace';
 
-    final reference = '${ref.book} ${ref.chapter}:${ref.verse}';
+    final refs = _emotionReferences[resolvedEmotion] ?? _emotionReferences['peace']!;
+    final dayOfYear = date.difference(DateTime(date.year, 1, 1)).inDays;
+    final idx = (dayOfYear + resolvedEmotion.hashCode.abs()) % refs.length;
+    final reference = refs[idx];
 
-    // 1. Try API (which transparently uses the verse cache).
+    return _getVerseForReference(reference, resolvedEmotion);
+  }
+
+  Future<VerseOfDay> _getVerseForReference(String reference, String emotion) async {
     if (_bibleApi != null) {
       try {
         final apiVerse = await _bibleApi!.fetchVerse(reference);
         return VerseOfDay(
           reference: apiVerse.reference,
           text: apiVerse.text,
-          emotion: resolvedEmotion,
+          emotion: emotion,
         );
       } catch (_) {
         // Fall through to local lookup.
       }
     }
 
-    // 2. Attempt local BibleRepository lookup.
     String text;
     try {
-      final verse = bibleRepo.getVerse('KJV', ref.book, ref.chapter, ref.verse);
+      final match = RegExp(r'^(.+)\s+(\d+):(\d+)$').firstMatch(reference);
+      if (match == null) {
+        throw StateError('Unparseable reference: $reference');
+      }
+      final book = match.group(1)!;
+      final chapter = int.parse(match.group(2)!);
+      final verseNum = int.parse(match.group(3)!);
+
+      final verse = bibleRepo.getVerse('KJV', book, chapter, verseNum);
       text = verse?.text ?? _fallbacks[reference] ?? reference;
     } catch (_) {
       text = _fallbacks[reference] ?? reference;
     }
 
-    return VerseOfDay(reference: reference, text: text, emotion: resolvedEmotion);
+    return VerseOfDay(reference: reference, text: text, emotion: emotion);
   }
 }

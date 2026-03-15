@@ -45,7 +45,10 @@ class PrayerPointService {
     if (cachedDate == today && cachedPayload != null && cachedPayload.isNotEmpty) {
       try {
         final list = List<String>.from(jsonDecode(cachedPayload) as List);
-        if (list.isNotEmpty) return list.take(3).toList(growable: false);
+        final cleaned = list.where((p) => !_isPlaceholderOutput(p)).toList();
+        if (cleaned.isNotEmpty) {
+          return cleaned.take(3).toList(growable: false);
+        }
       } catch (_) {
         // Re-generate when cached payload is malformed.
       }
@@ -88,13 +91,15 @@ class PrayerPointService {
     List<String> points = const [];
     try {
       final generated = await _modelService.generateResponse(prompt);
-      points = _parsePrayerPoints(generated);
+      if (!_isPlaceholderOutput(generated)) {
+        points = _parsePrayerPoints(generated);
+      }
     } catch (_) {
       // Fallback below when model fails.
     }
 
     if (points.isEmpty) {
-      points = _fallbackGenerator.generatePrayerPoints(normalizedEmotions);
+      points = _fallbackPrayerPoints(normalizedEmotions);
     }
 
     final finalPoints = points.take(3).toList(growable: false);
@@ -150,13 +155,36 @@ Rules:
           .replaceFirst(RegExp(r'^\d+[\).]\s*'), '')
           .replaceFirst(RegExp(r'^[-*]\s*'), '')
           .trim();
-      if (cleaned.isNotEmpty) {
+      if (cleaned.isNotEmpty && !_isPlaceholderOutput(cleaned)) {
         points.add(cleaned);
       }
       if (points.length >= 3) break;
     }
 
     return points;
+  }
+
+  bool _isPlaceholderOutput(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('gemma stub') ||
+        lower.contains('llama.cpp submodule') ||
+        lower.contains('developer message') ||
+        lower.contains('debug');
+  }
+
+  List<String> _fallbackPrayerPoints(List<String> emotions) {
+    final generated = _fallbackGenerator.generatePrayerPoints(emotions);
+    final cleaned = generated
+        .where((p) => !_isPlaceholderOutput(p))
+        .take(3)
+        .toList(growable: false);
+    if (cleaned.isNotEmpty) return cleaned;
+
+    return const [
+      'Pray for strength and peace today.',
+      'Ask God for wisdom in every decision you face.',
+      'Thank the Lord for His presence and mercy over your day.',
+    ];
   }
 
   String _dateOnly(DateTime d) =>
