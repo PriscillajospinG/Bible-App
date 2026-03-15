@@ -2,6 +2,7 @@ import '../../../ai/bible_api_service.dart';
 import '../../../ai/emotion_detection_service.dart';
 import '../../../ai/gemma_model_service.dart';
 import '../../../ai/gemma_prompt_builder.dart';
+import 'package:flutter/foundation.dart';
 import '../../../data/models/bible_verse.dart';
 import '../../../data/models/panic_entry.dart';
 import '../../../data/services/panic_search_service.dart';
@@ -69,12 +70,15 @@ class PanicGuidanceService {
     final prompt = GemmaPromptBuilder.buildPanicGuidancePrompt(
       userMessage: message,
       detectedEmotion: primaryEmotion,
+      detectedEmotions: detectedEmotions,
       entry: entry,
       fetchedVerses: fetchedVerses,
     );
+    debugPrint('Gemma generating response...');
+    debugPrint('Prompt length: ${prompt.length}');
 
     try {
-      final generated = await _modelService.generateFromPrompt(prompt);
+      final generated = await _modelService.generateResponse(prompt);
       if (generated.trim().isNotEmpty) {
         return PanicGuidanceResult(
           emotion: primaryEmotion,
@@ -86,6 +90,7 @@ class PanicGuidanceService {
       }
     } catch (_) {
       // Fall back to dataset response below.
+      debugPrint('Gemma generation failed. Falling back to contextual template.');
     }
 
     return PanicGuidanceResult(
@@ -99,6 +104,9 @@ class PanicGuidanceService {
 
   String _buildFallback(PanicEntry entry, List<BibleVerse> fetchedVerses) {
     final c = entry.response;
+    final emotionHint = entry.emotionTags.isEmpty
+        ? 'overwhelmed'
+        : entry.emotionTags.first;
 
     final String verseLine;
     if (fetchedVerses.isNotEmpty) {
@@ -112,7 +120,9 @@ class PanicGuidanceService {
       verseLine = '\n\nRecommended verses: ${c.recommendedVerses.join(', ')}';
     }
 
-    return '${c.understandingUserQuery}\n\n${c.biblicalExplanation}\n\n${c.shortPrayer}$verseLine'
-        .trim();
+    return 'It sounds like you\'re experiencing $emotionHint, and your feelings matter deeply before God. '
+        '${c.biblicalExplanation} '
+        'Remember this biblical picture: ${c.biblicalStoryExample}. '
+        '${c.shortPrayer}$verseLine';
   }
 }

@@ -61,7 +61,7 @@ class _PanicHistoryScreenState extends State<PanicHistoryScreen> {
         backgroundColor: const Color(0xFF6B4226),
         foregroundColor: Colors.white,
         title: const Text(
-          'Guidance History',
+          'Kyrie History',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
@@ -100,7 +100,7 @@ class _EmptyState extends StatelessWidget {
                 size: 52, color: Colors.brown.shade200),
             const SizedBox(height: 16),
             Text(
-              'No guidance sessions yet.',
+              'No Kyrie sessions yet.',
               style: TextStyle(
                 fontSize: 15,
                 color: Colors.brown.shade400,
@@ -109,7 +109,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Sessions will appear here after you seek guidance.',
+              'Sessions will appear here after you open Kyrie.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -196,7 +196,7 @@ class _HistoryTile extends StatelessWidget {
                           size: 11, color: Colors.brown.shade300),
                       const SizedBox(width: 4),
                       Text(
-                        'Guidance ref: ${entry.responseId}',
+                        'Kyrie ref: ${entry.responseId}',
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.brown.shade300,

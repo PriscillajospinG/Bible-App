@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// Text input + submit button for the Panic screen.
 ///
 /// [controller] — manages the typed message.
-/// [onSubmit]   — called when the user taps "Get Guidance".
+/// [onSubmit]   — called when the user taps "Seek Kyrie".
 /// [isLoading]  — disables interaction while the search runs.
 class PanicInputField extends StatelessWidget {
   const PanicInputField({
@@ -70,7 +70,7 @@ class PanicInputField extends StatelessWidget {
                   ),
                 )
               : const Icon(Icons.auto_awesome_rounded),
-          label: Text(isLoading ? 'Finding guidance…' : 'Get Guidance'),
+          label: Text(isLoading ? 'Preparing Kyrie support…' : 'Seek Kyrie'),
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFF6B4226),
             foregroundColor: Colors.white,

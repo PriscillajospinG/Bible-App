@@ -10,7 +10,6 @@ import '../services/reading_plan_service.dart';
 import '../services/reading_progress_service.dart';
 import '../widgets/continue_reading_card.dart';
 import '../widgets/reading_plan_progress_card.dart';
-import '../widgets/reminder_time_picker.dart';
 import '../widgets/streak_display_card.dart';
 
 class TodayScreen extends StatefulWidget {
@@ -30,8 +29,10 @@ class _TodayScreenState extends State<TodayScreen> {
   ReadingPlanDay? _todayAssignment;
   ReadingPlan? _activePlan;
   late int _streak;
-  TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
-  bool _reminderEnabled = false;
+  TimeOfDay _bibleReminderTime = const TimeOfDay(hour: 6, minute: 0);
+  bool _bibleReminderEnabled = true;
+  TimeOfDay _prayerReminderTime = const TimeOfDay(hour: 6, minute: 40);
+  bool _prayerReminderEnabled = true;
 
   @override
   void initState() {
@@ -70,8 +71,10 @@ class _TodayScreenState extends State<TodayScreen> {
       _todayAssignment = assignment;
       _activePlan = readingPlanService.getPlanByName(progress.planName);
       _streak = streakService.getCurrentStreak();
-      _reminderTime = reminderSettings.time;
-      _reminderEnabled = reminderSettings.enabled;
+      _bibleReminderTime = reminderSettings.bibleReadingTime;
+      _bibleReminderEnabled = reminderSettings.bibleReadingEnabled;
+      _prayerReminderTime = reminderSettings.prayerTime;
+      _prayerReminderEnabled = reminderSettings.prayerEnabled;
       _isLoading = false;
     });
   }
@@ -124,25 +127,6 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  Future<void> _onReminderChanged(bool enabled, TimeOfDay time) async {
-    await reminderService.updateReminder(enabled: enabled, time: time);
-    if (!mounted) return;
-    setState(() {
-      _reminderEnabled = enabled;
-      _reminderTime = time;
-    });
-
-    final message = enabled
-        ? 'Daily reminder enabled for ${time.format(context)}.'
-        : 'Daily reminder disabled.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   String _greeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good morning';
@@ -189,12 +173,13 @@ class _TodayScreenState extends State<TodayScreen> {
                       ),
                     const SizedBox(height: 10),
                     _TodayActionsCard(
-                      reminderEnabled: _reminderEnabled,
-                      reminderTime: _reminderTime,
-                      onReminderChanged: _onReminderChanged,
+                      bibleReminderEnabled: _bibleReminderEnabled,
+                      bibleReminderTime: _bibleReminderTime,
+                      prayerReminderEnabled: _prayerReminderEnabled,
+                      prayerReminderTime: _prayerReminderTime,
                       onOpenPlanReading: _openTodayPlanReading,
-                      onOpenPanic: () => tabSwitchRequest.value = 2,
-                      onOpenJournal: () => tabSwitchRequest.value = 3,
+                      onOpenPanic: () => tabSwitchRequest.value = 3,
+                      onOpenJournal: () => tabSwitchRequest.value = 2,
                       onOpenSettings: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -248,18 +233,20 @@ class _Header extends StatelessWidget {
 
 class _TodayActionsCard extends StatelessWidget {
   const _TodayActionsCard({
-    required this.reminderEnabled,
-    required this.reminderTime,
-    required this.onReminderChanged,
+    required this.bibleReminderEnabled,
+    required this.bibleReminderTime,
+    required this.prayerReminderEnabled,
+    required this.prayerReminderTime,
     required this.onOpenPlanReading,
     required this.onOpenPanic,
     required this.onOpenJournal,
     required this.onOpenSettings,
   });
 
-  final bool reminderEnabled;
-  final TimeOfDay reminderTime;
-  final Future<void> Function(bool enabled, TimeOfDay time) onReminderChanged;
+  final bool bibleReminderEnabled;
+  final TimeOfDay bibleReminderTime;
+  final bool prayerReminderEnabled;
+  final TimeOfDay prayerReminderTime;
   final VoidCallback onOpenPlanReading;
   final VoidCallback onOpenPanic;
   final VoidCallback onOpenJournal;
@@ -272,17 +259,34 @@ class _TodayActionsCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE3D7C0)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ReminderTimePicker(
-            enabled: reminderEnabled,
-            selectedTime: reminderTime,
-            onChanged: onReminderChanged,
+          const Text(
+            'Reminder Summary',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF4A3728),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _ReminderSummaryRow(
+            icon: Icons.auto_stories_rounded,
+            title: 'Bible Reading',
+            enabled: bibleReminderEnabled,
+            time: bibleReminderTime,
           ),
           const SizedBox(height: 8),
+          _ReminderSummaryRow(
+            icon: Icons.volunteer_activism_rounded,
+            title: 'Prayer',
+            enabled: prayerReminderEnabled,
+            time: prayerReminderTime,
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -298,9 +302,12 @@ class _TodayActionsCard extends StatelessWidget {
                   onPressed: onOpenPanic,
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF6B4226),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: const Icon(Icons.volunteer_activism_rounded),
-                  label: const Text('Panic Button'),
+                  label: const Text('Kyrie'),
                 ),
               ),
             ],
@@ -321,6 +328,54 @@ class _TodayActionsCard extends StatelessWidget {
               onPressed: onOpenSettings,
               icon: const Icon(Icons.settings_outlined),
               label: const Text('Open Settings'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReminderSummaryRow extends StatelessWidget {
+  const _ReminderSummaryRow({
+    required this.icon,
+    required this.title,
+    required this.enabled,
+    required this.time,
+  });
+
+  final IconData icon;
+  final String title;
+  final bool enabled;
+  final TimeOfDay time;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F4EA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF6B4226)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4A3728),
+              ),
+            ),
+          ),
+          Text(
+            enabled ? time.format(context) : 'Off',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: enabled ? const Color(0xFF6B4226) : Colors.brown.shade400,
             ),
           ),
         ],

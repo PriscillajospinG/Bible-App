@@ -5,14 +5,16 @@ import '../../features/bible/screens/translation_selection_screen.dart';
 import '../../features/home/screens/today_screen.dart';
 import '../../features/journal/screens/journal_screen.dart';
 import '../../features/panic/panic_screen.dart';
+import '../../features/settings/settings_screen.dart';
 
 /// Root shell of the app.
 ///
-/// Hosts a [NavigationBar] with four tabs:
-///   0 — Today (spiritual dashboard)
+/// Hosts a [BottomNavigationBar] with five tabs:
+///   0 — Home (spiritual dashboard)
 ///   1 — Bible reader (TranslationSelectionScreen)
-///   2 — Spiritual guidance (PanicScreen)
-///   3 — Journal (JournalScreen)
+///   2 — Journal (JournalScreen)
+///   3 — Kyrie (PanicScreen)
+///   4 — Profile (SettingsScreen)
 ///
 /// Each tab is wrapped in its own [Navigator] so navigation within a tab
 /// (e.g. Bible: translation → testament → book → chapter → verse) is
@@ -29,8 +31,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final _todayNavKey = GlobalKey<NavigatorState>();
   final _bibleNavKey = GlobalKey<NavigatorState>();
-  final _panicNavKey = GlobalKey<NavigatorState>();
   final _journalNavKey = GlobalKey<NavigatorState>();
+  final _kyrieNavKey = GlobalKey<NavigatorState>();
+  final _profileNavKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -54,7 +57,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Android back-button handling ───────────────────────────────────────────
   Future<bool> _onWillPop() async {
-    final keys = [_todayNavKey, _bibleNavKey, _panicNavKey, _journalNavKey];
+    final keys = [
+      _todayNavKey,
+      _bibleNavKey,
+      _journalNavKey,
+      _kyrieNavKey,
+      _profileNavKey,
+    ];
     final innerNav = keys[_currentIndex].currentState;
     if (innerNav != null && innerNav.canPop()) {
       innerNav.pop();
@@ -87,45 +96,52 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: () => const TranslationSelectionScreen(),
             ),
             _TabNavigator(
-              navigatorKey: _panicNavKey,
-              builder: () => const PanicScreen(),
-            ),
-            _TabNavigator(
               navigatorKey: _journalNavKey,
               builder: () => const JournalScreen(),
             ),
+            _TabNavigator(
+              navigatorKey: _kyrieNavKey,
+              builder: () => const PanicScreen(),
+            ),
+            _TabNavigator(
+              navigatorKey: _profileNavKey,
+              builder: () => const SettingsScreen(),
+            ),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (i) => setState(() => _currentIndex = i),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (i) => setState(() => _currentIndex = i),
+          type: BottomNavigationBarType.fixed,
           backgroundColor: const Color(0xFFFDF8F0),
-          indicatorColor: const Color(0xFFF0E9D2),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.wb_sunny_outlined),
-              selectedIcon: Icon(Icons.wb_sunny, color: Color(0xFF6B4226)),
-              label: 'Today',
+          selectedItemColor: const Color(0xFF6B4226),
+          unselectedItemColor: Colors.brown.shade400,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home_rounded),
+              label: 'Home',
             ),
-            NavigationDestination(
+            BottomNavigationBarItem(
               icon: Icon(Icons.menu_book_outlined),
-              selectedIcon: Icon(Icons.menu_book, color: Color(0xFF6B4226)),
+              activeIcon: Icon(Icons.menu_book_rounded),
               label: 'Bible',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.volunteer_activism_outlined),
-              selectedIcon: Icon(
-                Icons.volunteer_activism,
-                color: Color(0xFF6B4226),
-              ),
-              label: 'Guidance',
-            ),
-            NavigationDestination(
+            BottomNavigationBarItem(
               icon: Icon(Icons.edit_note_outlined),
-              selectedIcon:
-                  Icon(Icons.edit_note_rounded, color: Color(0xFF6B4226)),
+              activeIcon: Icon(Icons.edit_note_rounded),
               label: 'Journal',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.volunteer_activism_outlined),
+              activeIcon: Icon(Icons.volunteer_activism_rounded),
+              label: 'Kyrie',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline_rounded),
+              activeIcon: Icon(Icons.person_rounded),
+              label: 'Profile',
             ),
           ],
         ),

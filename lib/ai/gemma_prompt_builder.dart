@@ -123,6 +123,7 @@ Keep it concise (120-220 words), include 1 short prayer sentence, and do not inv
     required String userMessage,
     required String detectedEmotion,
     required PanicEntry entry,
+    List<String> detectedEmotions = const [],
     List<BibleVerse> fetchedVerses = const [],
   }) {
     final String verses;
@@ -136,16 +137,26 @@ Keep it concise (120-220 words), include 1 short prayer sentence, and do not inv
       verses = entry.response.recommendedVerses.join(', ');
     }
 
+    final emotionTags = entry.emotionTags.isEmpty
+      ? detectedEmotion
+      : entry.emotionTags.join(', ');
+    final detectedEmotionList = detectedEmotions.isEmpty
+      ? detectedEmotion
+      : detectedEmotions.join(', ');
+
     return '''
 You are a compassionate Christian spiritual guide.
 
-User message:
-"$userMessage"
+  A user is struggling with the following situation.
 
-Context:
+  User message:
+  $userMessage
 
-Emotion:
-$detectedEmotion
+  Detected emotion:
+  $detectedEmotionList
+
+  Emotion tags:
+  $emotionTags
 
 Situation tags:
 ${entry.situationTags.join(', ')}
@@ -159,15 +170,16 @@ ${entry.response.biblicalStoryExample}
 Recommended verses:
 $verses
 
-Write a warm pastoral response.
+Write a warm pastoral response that:
+- understands the user's struggle
+- explains biblical encouragement
+- references scripture naturally
+- ends with a short prayer
 
-Include:
-- empathy
-- explanation
-- encouragement
-- a short prayer
-
-Keep it concise, gentle, and practical. Do not invent scripture references beyond the provided list.
+Do NOT return sections or headings.
+Write one natural conversational response.
+Keep it concise, gentle, and practical.
+Do not invent scripture references beyond the provided list.
 '''.trim();
   }
 }

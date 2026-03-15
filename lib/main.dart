@@ -131,7 +131,7 @@ Future<void> main() async {
     await reminderService.init(
       onOpenToday: () => tabSwitchRequest.value = 0,
     );
-    await reminderService.rescheduleIfEnabled();
+    await reminderService.rescheduleAll();
   } catch (e) {
     debugPrint('Reminder service init failed: $e');
   }

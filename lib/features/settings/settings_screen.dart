@@ -15,11 +15,16 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late String _translation;
   late ThemeMode _themeMode;
-  late TimeOfDay _reminderTime;
   late String _readingPlan;
   late double _fontScale;
   late bool _highContrast;
   late bool _largeVerseText;
+
+  bool _bibleReminderEnabled = true;
+  TimeOfDay _bibleReminderTime = const TimeOfDay(hour: 6, minute: 0);
+  bool _prayerReminderEnabled = true;
+  TimeOfDay _prayerReminderTime = const TimeOfDay(hour: 6, minute: 40);
+
   bool _busy = false;
 
   @override
@@ -27,11 +32,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _translation = settingsService.preferredTranslation;
     _themeMode = settingsService.themeMode;
-    _reminderTime = settingsService.reminderTime;
     _readingPlan = settingsService.selectedReadingPlan;
     _fontScale = accessibilityService.fontScale;
     _highContrast = accessibilityService.highContrast;
     _largeVerseText = accessibilityService.largeVerseText;
+    _loadReminderSettings();
+  }
+
+  Future<void> _loadReminderSettings() async {
+    try {
+      final reminderSettings = await reminderService.loadSettings();
+      if (!mounted) return;
+      setState(() {
+        _bibleReminderEnabled = reminderSettings.bibleReadingEnabled;
+        _bibleReminderTime = reminderSettings.bibleReadingTime;
+        _prayerReminderEnabled = reminderSettings.prayerEnabled;
+        _prayerReminderTime = reminderSettings.prayerTime;
+      });
+    } catch (_) {
+      // Keep defaults when local reminder settings cannot be loaded.
+    }
   }
 
   Future<void> _saveTranslation(String value) async {
@@ -44,20 +64,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveTheme(ThemeMode mode) async {
     setState(() => _themeMode = mode);
     await settingsService.saveThemeMode(mode);
-    appPreferencesNotifier.value++;
-  }
-
-  Future<void> _pickReminder() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _reminderTime,
-      helpText: 'Set daily reminder',
-    );
-    if (picked == null) return;
-
-    setState(() => _reminderTime = picked);
-    await settingsService.saveReminderTime(picked);
-    await reminderService.updateReminder(enabled: true, time: picked);
     appPreferencesNotifier.value++;
   }
 
@@ -83,6 +89,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _largeVerseText = value);
     await accessibilityService.saveLargeVerseText(value);
     appPreferencesNotifier.value++;
+  }
+
+  Future<void> _toggleBibleReminder(bool enabled) async {
+    setState(() => _bibleReminderEnabled = enabled);
+    await reminderService.updateBibleReadingReminder(
+      enabled: enabled,
+      time: _bibleReminderTime,
+    );
+  }
+
+  Future<void> _togglePrayerReminder(bool enabled) async {
+    setState(() => _prayerReminderEnabled = enabled);
+    await reminderService.updatePrayerReminder(
+      enabled: enabled,
+      time: _prayerReminderTime,
+    );
+  }
+
+  Future<void> _pickBibleReminderTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _bibleReminderTime,
+      helpText: 'Bible reading reminder time',
+    );
+    if (picked == null) return;
+
+    setState(() => _bibleReminderTime = picked);
+    await reminderService.updateBibleReadingReminder(
+      enabled: _bibleReminderEnabled,
+      time: picked,
+    );
+  }
+
+  Future<void> _pickPrayerReminderTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _prayerReminderTime,
+      helpText: 'Prayer reminder time',
+    );
+    if (picked == null) return;
+
+    setState(() => _prayerReminderTime = picked);
+    await reminderService.updatePrayerReminder(
+      enabled: _prayerReminderEnabled,
+      time: picked,
+    );
   }
 
   Future<void> _exportData() async {
@@ -132,6 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await settingsService.init();
       await accessibilityService.init();
       await streakService.loadCurrentStreak();
+      await _loadReminderSettings();
       appPreferencesNotifier.value++;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -147,36 +200,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final planNames = readingPlanService.availablePlans.map((e) => e.name).toList();
+    final planNames =
+        readingPlanService.availablePlans.map((e) => e.name).toList();
     final translations = bibleRepo.getTranslations();
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFDF8F0),
       appBar: AppBar(
-        title: const Text('Settings'),
+        backgroundColor: const Color(0xFFFDF8F0),
+        elevation: 0,
+        title: const Text('Profile & Settings'),
       ),
       body: IgnorePointer(
         ignoring: _busy,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.only(bottom: 28),
           children: [
-            const SizedBox(height: 10),
+            const _SectionHeader(
+              title: 'Reading Preferences',
+              icon: Icons.menu_book_outlined,
+            ),
             SettingsTile(
               leading: const Icon(Icons.translate_rounded),
               title: 'Preferred Bible Translation',
-              subtitle: 'Used for quick open and plan reading',
+              subtitle: 'Used for quick open and reading plan passages',
               trailing: DropdownButton<String>(
                 value: _translation,
                 underline: const SizedBox.shrink(),
                 items: translations
-                    .map((t) => DropdownMenuItem<String>(value: t, child: Text(t)))
+                    .map((t) => DropdownMenuItem<String>(
+                          value: t,
+                          child: Text(t),
+                        ))
                     .toList(),
                 onChanged: (v) {
                   if (v != null) _saveTranslation(v);
                 },
               ),
             ),
+            SettingsTile(
+              leading: const Icon(Icons.menu_book_rounded),
+              title: 'Reading Plan',
+              subtitle: _readingPlan,
+              trailing: DropdownButton<String>(
+                value: _readingPlan,
+                underline: const SizedBox.shrink(),
+                items: planNames
+                    .map(
+                      (name) => DropdownMenuItem<String>(
+                        value: name,
+                        child: SizedBox(
+                          width: 180,
+                          child: Text(
+                            name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) _savePlan(v);
+                },
+              ),
+            ),
+            const SizedBox(height: 4),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
@@ -186,7 +279,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Icon(Icons.brightness_6_outlined),
                         SizedBox(width: 8),
-                        Text('Theme', style: TextStyle(fontWeight: FontWeight.w600)),
+                        Text(
+                          'Theme',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -195,45 +291,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            SettingsTile(
-              leading: const Icon(Icons.notifications_active_outlined),
-              title: 'Daily Reminder Time',
-              subtitle: _reminderTime.format(context),
-              onTap: _pickReminder,
-            ),
-            SettingsTile(
-              leading: const Icon(Icons.menu_book_outlined),
-              title: 'Reading Plan',
-              subtitle: _readingPlan,
-              trailing: DropdownButton<String>(
-                value: _readingPlan,
-                underline: const SizedBox.shrink(),
-                items: planNames
-                    .map((name) => DropdownMenuItem<String>(
-                          value: name,
-                          child: SizedBox(width: 180, child: Text(name, overflow: TextOverflow.ellipsis)),
-                        ))
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) _savePlan(v);
-                },
-              ),
+
+            const _SectionHeader(
+              title: 'Reminders',
+              icon: Icons.notifications_active_outlined,
             ),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+                child: Column(
+                  children: [
+                    _ReminderRow(
+                      title: 'Bible Reading Reminder',
+                      subtitle: 'Start your day with God\'s Word.',
+                      icon: Icons.auto_stories_rounded,
+                      enabled: _bibleReminderEnabled,
+                      time: _bibleReminderTime,
+                      onToggle: _toggleBibleReminder,
+                      onPickTime: _pickBibleReminderTime,
+                    ),
+                    const Divider(height: 18),
+                    _ReminderRow(
+                      title: 'Prayer Reminder',
+                      subtitle: 'Take a moment to pray.',
+                      icon: Icons.volunteer_activism_rounded,
+                      enabled: _prayerReminderEnabled,
+                      time: _prayerReminderTime,
+                      onToggle: _togglePrayerReminder,
+                      onPickTime: _pickPrayerReminderTime,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const _SectionHeader(
+              title: 'Accessibility',
+              icon: Icons.accessibility_new_rounded,
+            ),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.accessibility_new_rounded),
-                        SizedBox(width: 8),
-                        Text('Accessibility', style: TextStyle(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
                     FontSizeSlider(value: _fontScale, onChanged: _saveFontScale),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -251,6 +360,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+
+            const _SectionHeader(
+              title: 'Data',
+              icon: Icons.folder_outlined,
+            ),
             SettingsTile(
               leading: const Icon(Icons.download_rounded),
               title: 'Export User Data (JSON)',
@@ -258,7 +372,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: _exportData,
             ),
             SettingsTile(
-              leading: Icon(Icons.delete_forever_rounded, color: Colors.red.shade700),
+              leading:
+                  Icon(Icons.delete_forever_rounded, color: Colors.red.shade700),
               title: 'Reset App Data',
               subtitle: 'Clear local data and settings',
               onTap: _resetData,
@@ -267,6 +382,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.icon});
+
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF6B4226), size: 18),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF6B4226),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReminderRow extends StatelessWidget {
+  const _ReminderRow({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.enabled,
+    required this.time,
+    required this.onToggle,
+    required this.onPickTime,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool enabled;
+  final TimeOfDay time;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onPickTime;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          leading: CircleAvatar(
+            radius: 18,
+            backgroundColor: const Color(0xFFF0E9D2),
+            foregroundColor: const Color(0xFF6B4226),
+            child: Icon(icon, size: 18),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(subtitle),
+          trailing: Switch(value: enabled, onChanged: onToggle),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 72, right: 10),
+            child: OutlinedButton.icon(
+              onPressed: onPickTime,
+              icon: const Icon(Icons.schedule_rounded, size: 18),
+              label: Text(enabled ? time.format(context) : '${time.format(context)} (off)'),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

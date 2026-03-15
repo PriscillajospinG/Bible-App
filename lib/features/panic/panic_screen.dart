@@ -4,14 +4,12 @@ import 'package:flutter/services.dart';
 import '../../core/service_locator.dart';
 import '../../data/models/panic_entry.dart';
 import '../../data/models/bible_verse.dart';
-import '../../data/models/panic_response.dart';
 import 'panic_history_screen.dart';
 import 'services/panic_guidance_service.dart';
 import 'services/text_processing_service.dart';
 import 'widgets/panic_input_field.dart';
-import 'widgets/panic_response_card.dart';
 
-/// Main Spiritual Guidance (Panic Button) screen.
+/// Main Kyrie spiritual support screen.
 ///
 /// Step 5 upgrades over Step 2:
 ///   • Uses [PanicGuidanceService] end-to-end RAG pipeline.
@@ -84,7 +82,7 @@ class _PanicScreenState extends State<PanicScreen> {
         _isLoading = false;
         _savedToHistory = true;
         _isFormatting = false;
-        _ragVerses = const [];
+        _ragVerses = result.fetchedVerses;
       });
 
       await Future.delayed(const Duration(milliseconds: 120));
@@ -116,8 +114,8 @@ class _PanicScreenState extends State<PanicScreen> {
   }
 
   void _copyResponse() {
-    if (_result == null) return;
-    final text = _formatForClipboard(_result!);
+    final text = _aiFormattedResponse?.trim();
+    if (text == null || text.isEmpty) return;
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -144,45 +142,6 @@ class _PanicScreenState extends State<PanicScreen> {
     );
   }
 
-  static String _formatForClipboard(PanicEntry r) {
-    final c = r.response;
-    final verses = c.recommendedVerses.join('\n');
-    return '''
-Understanding the Situation
-"${c.understandingUserQuery}"
-
-Biblical Explanation
-${c.biblicalExplanation}
-
-Biblical Story Example
-${c.biblicalStoryExample}
-
-Recommended Verses
-$verses
-
-Short Prayer
-${c.shortPrayer}
-'''.trim();
-  }
-
-  static PanicResponse _toLegacyResponse(PanicEntry entry) {
-    return PanicResponse(
-      id: entry.id,
-      emotionTags: entry.emotionTags,
-      situationTags: entry.situationTags,
-      triggerExamples: entry.triggerExamples,
-      searchText: entry.searchText,
-      priorityWeight: entry.priorityWeight,
-      response: PanicResponseContent(
-        understandingUserQuery: entry.response.understandingUserQuery,
-        biblicalExplanation: entry.response.biblicalExplanation,
-        biblicalStoryExample: entry.response.biblicalStoryExample,
-        recommendedVerses: entry.response.recommendedVerses,
-        shortPrayer: entry.response.shortPrayer,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -191,7 +150,7 @@ ${c.shortPrayer}
         backgroundColor: const Color(0xFF6B4226),
         foregroundColor: Colors.white,
         title: const Text(
-          'Spiritual Guidance',
+          'Kyrie',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
@@ -200,7 +159,7 @@ ${c.shortPrayer}
           IconButton(
             onPressed: _openHistory,
             icon: const Icon(Icons.history_rounded),
-            tooltip: 'Guidance history',
+            tooltip: 'Kyrie history',
           ),
           if (_result != null)
             TextButton.icon(
@@ -243,10 +202,10 @@ ${c.shortPrayer}
                   const SizedBox(height: 12),
                   _ScriptureContextCard(verses: _ragVerses),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 SizedBox(key: _scrollKey, height: 0),
-                PanicResponseCard(
-                  panicResponse: _toLegacyResponse(_result!),
+                if (_result != null) _RecommendedVersesRow(
+                  verses: _result!.response.recommendedVerses,
                   onVerseTap: _openVerse,
                 ),
                 const SizedBox(height: 8),
@@ -259,6 +218,50 @@ ${c.shortPrayer}
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RecommendedVersesRow extends StatelessWidget {
+  const _RecommendedVersesRow({
+    required this.verses,
+    required this.onVerseTap,
+  });
+
+  final List<String> verses;
+  final void Function(String verseRef) onVerseTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (verses.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEADFD0)),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: verses
+            .map(
+              (v) => ActionChip(
+                onPressed: () => onVerseTap(v),
+                label: Text(v),
+                avatar: const Icon(
+                  Icons.open_in_new_rounded,
+                  size: 14,
+                  color: Color(0xFF6B4226),
+                ),
+                backgroundColor: const Color(0xFFF0E9D2),
+                side: const BorderSide(color: Color(0xFFD4C4A0)),
+              ),
+            )
+            .toList(),
       ),
     );
   }

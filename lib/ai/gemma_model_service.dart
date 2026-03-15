@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -40,21 +41,15 @@ class GemmaModelService {
     _initialized = true;
   }
 
-  Future<String> generateResponse({
+  Future<String> rewriteStructuredResponse({
     required String userMessage,
     required PanicResponse panicResponse,
   }) async {
-    if (!_initialized) {
-      await initializeModel();
-    }
-
     final prompt = GemmaPromptBuilder.buildPanicRewritePrompt(
       userMessage: userMessage,
       panicResponse: panicResponse,
     );
-
-    // Run inference off the UI isolate.
-    final output = await Isolate.run(() => GemmaEngine.instance.generateText(prompt));
+    final output = await generateResponse(prompt);
     if (output.trim().isEmpty) {
       return _fallbackFromStructured(panicResponse);
     }
@@ -63,16 +58,25 @@ class GemmaModelService {
 
   /// Runs inference with a raw [prompt] string.
   ///
-  /// Use this for RAG-pipeline calls where the prompt is pre-built by
-  /// [GemmaPromptBuilder]. Returns an empty string if the model produces
-  /// no output.
-  Future<String> generateFromPrompt(String prompt) async {
+  /// Returns an empty string if the model is unavailable or produces no text.
+  Future<String> generateResponse(String prompt) async {
     if (!_initialized) {
-      await initializeModel();
+      try {
+        await initializeModel();
+      } catch (e) {
+        debugPrint('GemmaModelService: model unavailable, using fallback. $e');
+        return '';
+      }
     }
-    final output =
-        await Isolate.run(() => GemmaEngine.instance.generateText(prompt));
+
+    // Run inference off the UI isolate.
+    final output = await Isolate.run(() => GemmaEngine.instance.generateText(prompt));
     return output.trim();
+  }
+
+  /// Backward-compatible wrapper used by older services.
+  Future<String> generateFromPrompt(String prompt) async {
+    return generateResponse(prompt);
   }
 
   String get modelPathOrEmpty => _modelFilePath ?? '';
