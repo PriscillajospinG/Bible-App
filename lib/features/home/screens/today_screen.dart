@@ -67,6 +67,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final assignment = await readingPlanService.getTodayAssignment();
     final reminderSettings = await reminderService.loadSettings();
 
+    if (!mounted) return;
     setState(() {
       _verse = verse;
       _prayers = prayers;
@@ -105,6 +106,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
     final preferredTranslation = settingsService.preferredTranslation;
     await bibleRepo.ensureLoaded(preferredTranslation);
+    if (!mounted) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -123,6 +125,7 @@ class _TodayScreenState extends State<TodayScreen> {
     await readingPlanService.markTodayCompleted();
     if (!mounted) return;
     await _loadTodayData();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Reading plan updated.'),

@@ -44,15 +44,14 @@ class _TranslationSelectionScreenState
       if (mounted) setState(() => _loadingTranslation = null);
     }
 
-    if (mounted) {
-      await settingsService.savePreferredTranslation(code);
-      appPreferencesNotifier.value++;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => TestamentSelectionScreen(translation: code),
-        ),
-      );
-    }
+    await settingsService.savePreferredTranslation(code);
+    if (!mounted) return;
+    appPreferencesNotifier.value++;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TestamentSelectionScreen(translation: code),
+      ),
+    );
   }
 
   @override

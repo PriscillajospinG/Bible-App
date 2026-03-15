@@ -86,7 +86,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _onDurationChanged(String label) async {
     if (label == 'Custom') {
       final existing = await readingPlanService.getCustomPlanDays();
+      if (!mounted) return;
       final customDays = await _pickCustomPlanDays(existing);
+      if (!mounted) return;
       if (customDays == null) return;
 
       await readingPlanService.selectPlanByDays(customDays, custom: true);
@@ -100,6 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final days = int.tryParse(label.split(' ').first);
     if (days == null) return;
     await readingPlanService.selectPlanByDays(days);
+    if (!mounted) return;
     final planName = readingPlanService.getPlanByName('$days Day Plan').name;
     await _savePlan(planName);
     if (!mounted) return;
@@ -110,7 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final controller = TextEditingController(text: initialDays.toString());
     final result = await showDialog<int>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Custom Plan Duration'),
         content: TextField(
           controller: controller,
@@ -122,23 +125,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () {
               final value = int.tryParse(controller.text.trim());
               if (value == null || value < 7 || value > 1500) {
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
                 return;
               }
-              Navigator.of(context).pop(value);
+              Navigator.of(dialogContext).pop(value);
             },
             child: const Text('Save'),
           ),
         ],
       ),
     );
+    controller.dispose();
+    if (!mounted) return null;
     return result;
   }
 
@@ -226,18 +231,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _resetData() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Reset app data?'),
         content: const Text(
           'This will clear local preferences, journal, bookmarks, highlights, and progress data. This cannot be undone.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
             child: const Text('Reset'),
           ),
@@ -245,6 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
+    if (!mounted) return;
     if (confirm != true) return;
 
     setState(() => _busy = true);
