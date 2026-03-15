@@ -32,7 +32,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _translation = settingsService.preferredTranslation;
     _themeMode = settingsService.themeMode;
-    _readingPlan = settingsService.selectedReadingPlan;
+    _readingPlan =
+      readingPlanService.getPlanByName(settingsService.selectedReadingPlan).name;
     _fontScale = accessibilityService.fontScale;
     _highContrast = accessibilityService.highContrast;
     _largeVerseText = accessibilityService.largeVerseText;
@@ -71,6 +72,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _readingPlan = planName);
     await settingsService.saveSelectedReadingPlan(planName);
     await readingPlanService.selectPlan(planName);
+  }
+
+  String _durationLabelFromPlanName(String planName) {
+    final lower = planName.toLowerCase();
+    if (lower.contains('custom')) return 'Custom';
+    final match = RegExp(r'(\d+)').firstMatch(planName);
+    final days = int.tryParse(match?.group(1) ?? '');
+    if (days == null) return '30 days';
+    return '$days days';
+  }
+
+  Future<void> _onDurationChanged(String label) async {
+    if (label == 'Custom') {
+      final existing = await readingPlanService.getCustomPlanDays();
+      final customDays = await _pickCustomPlanDays(existing);
+      if (customDays == null) return;
+
+      await readingPlanService.selectPlanByDays(customDays, custom: true);
+      final planName = readingPlanService.getPlanByName('Custom Plan').name;
+      await _savePlan(planName);
+      if (!mounted) return;
+      setState(() => _readingPlan = planName);
+      return;
+    }
+
+    final days = int.tryParse(label.split(' ').first);
+    if (days == null) return;
+    await readingPlanService.selectPlanByDays(days);
+    final planName = readingPlanService.getPlanByName('$days Day Plan').name;
+    await _savePlan(planName);
+    if (!mounted) return;
+    setState(() => _readingPlan = planName);
+  }
+
+  Future<int?> _pickCustomPlanDays(int initialDays) async {
+    final controller = TextEditingController(text: initialDays.toString());
+    final result = await showDialog<int>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Custom Plan Duration'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Number of days',
+            hintText: 'e.g. 120',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text.trim());
+              if (value == null || value < 7 || value > 1500) {
+                Navigator.of(context).pop();
+                return;
+              }
+              Navigator.of(context).pop(value);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    return result;
   }
 
   Future<void> _saveFontScale(double value) async {
@@ -200,8 +269,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final planNames =
-        readingPlanService.availablePlans.map((e) => e.name).toList();
+    final durationOptions = readingPlanService.durationOptions;
+    final resolvedDuration = _durationLabelFromPlanName(_readingPlan);
+    final selectedDuration = durationOptions.contains(resolvedDuration)
+        ? resolvedDuration
+        : '30 days';
     final translations = bibleRepo.getTranslations();
 
     return Scaffold(
@@ -240,12 +312,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SettingsTile(
               leading: const Icon(Icons.menu_book_rounded),
-              title: 'Reading Plan',
+              title: 'Reading Plan Duration',
               subtitle: _readingPlan,
               trailing: DropdownButton<String>(
-                value: _readingPlan,
+                value: selectedDuration,
                 underline: const SizedBox.shrink(),
-                items: planNames
+                items: durationOptions
                     .map(
                       (name) => DropdownMenuItem<String>(
                         value: name,
@@ -260,7 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     )
                     .toList(),
                 onChanged: (v) {
-                  if (v != null) _savePlan(v);
+                  if (v != null) _onDurationChanged(v);
                 },
               ),
             ),

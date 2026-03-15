@@ -5,8 +5,8 @@ import '../models/verse_of_day.dart';
 import '../widgets/prayer_point_list.dart';
 import '../widgets/verse_of_day_card.dart';
 
-/// Static list of reflection questions shown in rotation based on day-of-year.
-const _reflectionPrompts = [
+/// Static list of journaling prompts shown in rotation based on day-of-year.
+const _journalPrompts = [
   "What is one thing God has done for you this week that you haven\u2019t thanked Him for yet?",
   "Where have you been relying on yourself instead of trusting God?",
   "What fear has been holding you back from stepping into God\u2019s calling?",
@@ -29,7 +29,7 @@ class TodayScreen extends StatefulWidget {
 class _TodayScreenState extends State<TodayScreen> {
   VerseOfDay? _verse;
   List<String> _prayers = [];
-  String _reflectionPrompt = '';
+  String _journalPrompt = '';
   bool _isLoading = true;
 
   @override
@@ -51,7 +51,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final latestEntry = journalRepo.getLatestEntry();
     final emotions = latestEntry != null && latestEntry.detectedEmotions.isNotEmpty
         ? latestEntry.detectedEmotions
-        : ['reflection'];
+      : ['peace'];
 
     final verse = await verseSuggestionService.getVerseForEmotion(emotions.first);
     final prayers = prayerGeneratorService.generatePrayerPoints(emotions);
@@ -59,12 +59,12 @@ class _TodayScreenState extends State<TodayScreen> {
     final dayOfYear = DateTime.now().difference(
           DateTime(DateTime.now().year, 1, 1),
         ).inDays;
-    final prompt = _reflectionPrompts[dayOfYear % _reflectionPrompts.length];
+    final prompt = _journalPrompts[dayOfYear % _journalPrompts.length];
 
     setState(() {
       _verse = verse;
       _prayers = prayers;
-      _reflectionPrompt = prompt;
+      _journalPrompt = prompt;
       _isLoading = false;
     });
   }
@@ -103,8 +103,8 @@ class _TodayScreenState extends State<TodayScreen> {
 
                     const SizedBox(height: 24),
 
-                    // ── Reflection Prompt ────────────────────────────────
-                    _ReflectionCard(prompt: _reflectionPrompt),
+                    // ── Journal Prompt ───────────────────────────────────
+                    _JournalPromptCard(prompt: _journalPrompt),
 
                     const SizedBox(height: 24),
 
@@ -155,8 +155,8 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _ReflectionCard extends StatelessWidget {
-  const _ReflectionCard({required this.prompt});
+class _JournalPromptCard extends StatelessWidget {
+  const _JournalPromptCard({required this.prompt});
 
   final String prompt;
 
@@ -179,7 +179,7 @@ class _ReflectionCard extends StatelessWidget {
                   size: 15, color: Color(0xFF6B4226)),
               const SizedBox(width: 6),
               Text(
-                'REFLECT',
+                'JOURNAL PROMPT',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,

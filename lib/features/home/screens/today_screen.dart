@@ -51,12 +51,16 @@ class _TodayScreenState extends State<TodayScreen> {
 
   Future<void> _loadTodayData() async {
     final latestEntry = journalRepo.getLatestEntry();
+    final latestKyrie = panicHistoryService.getLatestEntry();
     final emotions = latestEntry != null && latestEntry.detectedEmotions.isNotEmpty
         ? latestEntry.detectedEmotions
-        : ['reflection'];
+        : ['peace'];
 
-    final verse = await verseSuggestionService.getVerseForEmotion(emotions.first);
-    final prayers = prayerGeneratorService.generatePrayerPoints(emotions);
+    final verse = await verseOfDayService.getVerseForToday(emotions);
+    final prayers = await prayerPointService.getPrayerPointsForToday(
+      latestJournal: latestEntry,
+      latestKyrie: latestKyrie,
+    );
 
     final position = await readingProgressService.getLastReadingPosition();
     final progress = await readingPlanService.getProgress();
@@ -152,12 +156,12 @@ class _TodayScreenState extends State<TodayScreen> {
                   padding: const EdgeInsets.only(bottom: 28),
                   children: [
                     _Header(greeting: _greeting()),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
+                    StreakDisplayCard(streak: _streak),
+                    const SizedBox(height: 16),
                     if (verse != null) VerseOfDayCard(verse: verse),
                     const SizedBox(height: 18),
                     PrayerPointList(prayers: _prayers),
-                    const SizedBox(height: 18),
-                    StreakDisplayCard(streak: _streak),
                     const SizedBox(height: 14),
                     ContinueReadingCard(
                       position: _readingPosition,

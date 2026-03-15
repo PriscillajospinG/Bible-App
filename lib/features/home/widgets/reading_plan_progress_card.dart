@@ -19,6 +19,12 @@ class ReadingPlanProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = plan.totalDays == 0 ? 0.0 : completedDays / plan.totalDays;
+    final first = todayAssignment.readings.first;
+    final last = todayAssignment.readings.last;
+    final readingSummary = todayAssignment.readings.length == 1
+        ? '${first.book} ${first.chapter}'
+        : '${first.book} ${first.chapter} to ${last.book} ${last.chapter}';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -53,7 +59,7 @@ class ReadingPlanProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Today: Day ${todayAssignment.day} - ${todayAssignment.book} ${todayAssignment.chapter}',
+            'Today: Day ${todayAssignment.day} - $readingSummary',
             style: const TextStyle(
               fontWeight: FontWeight.w600,
               color: Color(0xFF4A3728),
