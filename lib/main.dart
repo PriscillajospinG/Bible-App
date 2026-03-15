@@ -153,7 +153,7 @@ Future<void> main() async {
     debugPrint('Gemma model not initialized: $e');
   }
 
-  // RAG pipeline services (Bible API + verse cache + guidance + reflection).
+  // RAG pipeline services (Bible API + verse cache + guidance + journal AI).
   // Shared emotion → verse map (loaded once, injected into both RAG services).
   emotionVersesRepository = EmotionVersesRepository();
   try {
