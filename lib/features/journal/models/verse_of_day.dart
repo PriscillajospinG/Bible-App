@@ -18,4 +18,16 @@ class VerseOfDay {
 
   /// Returns [text] with KJV supplied-word markers (`{…}`) stripped.
   String get cleanText => text.replaceAll(RegExp(r'\{([^}]*)\}'), r'$1');
+
+  Map<String, dynamic> toJson() => {
+        'reference': reference,
+        'text': text,
+        'emotion': emotion,
+      };
+
+  factory VerseOfDay.fromJson(Map<String, dynamic> json) => VerseOfDay(
+        reference: (json['reference'] as String? ?? '').trim(),
+        text: (json['text'] as String? ?? '').trim(),
+        emotion: (json['emotion'] as String? ?? 'peace').trim(),
+      );
 }

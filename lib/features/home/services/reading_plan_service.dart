@@ -2,21 +2,36 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ReadingPlanDay {
-  const ReadingPlanDay({
-    required this.day,
-    required this.book,
-    required this.chapter,
-  });
+import '../../../data/repositories/bible_repository.dart';
 
-  final int day;
+class ReadingAssignment {
+  const ReadingAssignment({required this.book, required this.chapter});
+
   final String book;
   final int chapter;
 
   Map<String, dynamic> toJson() => {
-        'day': day,
         'book': book,
         'chapter': chapter,
+      };
+}
+
+class ReadingPlanDay {
+  const ReadingPlanDay({
+    required this.day,
+    required this.readings,
+  });
+
+  final int day;
+  final List<ReadingAssignment> readings;
+
+  // Backward-compatible helpers used by existing UI/navigation code.
+  String get book => readings.first.book;
+  int get chapter => readings.first.chapter;
+
+  Map<String, dynamic> toJson() => {
+        'day': day,
+        'readings': readings.map((r) => r.toJson()).toList(),
       };
 }
 
@@ -51,69 +66,53 @@ class ReadingPlanProgress {
   }
 }
 
-/// Offline reading plan catalog and local completion tracking.
+/// Reading plan engine that distributes full-Bible chapters across plan days.
 class ReadingPlanService {
+  ReadingPlanService({required BibleRepository repository})
+      : _repository = repository;
+
   static const _progressKey = 'reading_plan_progress';
+  static const _customPlanDaysKey = 'reading_plan_custom_days';
 
-  static final ReadingPlan gospel30 = ReadingPlan(
-    name: '30 Day Gospel Plan',
-    days: List.generate(30, (i) {
-      if (i < 10) {
-        return ReadingPlanDay(day: i + 1, book: 'Matthew', chapter: i + 1);
-      }
-      if (i < 18) {
-        return ReadingPlanDay(day: i + 1, book: 'Mark', chapter: i - 9);
-      }
-      if (i < 25) {
-        return ReadingPlanDay(day: i + 1, book: 'Luke', chapter: i - 17);
-      }
-      return ReadingPlanDay(day: i + 1, book: 'John', chapter: i - 24);
-    }),
-  );
+  static const int _defaultCustomDays = 120;
+  static const List<int> _presetDays = [30, 90, 180, 365];
 
-  static final ReadingPlan newTestament90 = ReadingPlan(
-    name: '90 Day New Testament',
-    days: List.generate(
-      90,
-      (i) => ReadingPlanDay(
-        day: i + 1,
-        book: i < 28
-            ? 'Matthew'
-            : i < 44
-                ? 'Mark'
-                : i < 68
-                    ? 'Luke'
-                    : 'John',
-        chapter: (i % 28) + 1,
-      ),
-    ),
-  );
+  final BibleRepository _repository;
 
-  static final ReadingPlan bible365 = ReadingPlan(
-    name: '365 Day Bible Plan',
-    days: List.generate(
-      365,
-      (i) => ReadingPlanDay(
-        day: i + 1,
-        book: i < 31
-            ? 'Genesis'
-            : i < 62
-                ? 'Exodus'
-                : i < 93
-                    ? 'Psalms'
-                    : 'John',
-        chapter: (i % 31) + 1,
-      ),
-    ),
-  );
+  int _customDays = _defaultCustomDays;
+  List<ReadingAssignment> _allAssignments = const [];
 
-  final List<ReadingPlan> availablePlans = [
-    gospel30,
-    newTestament90,
-    bible365,
-  ];
+  List<String> get durationOptions => const [
+        '30 days',
+        '90 days',
+        '180 days',
+        '365 days',
+        'Custom',
+      ];
 
-  ReadingPlan get defaultPlan => gospel30;
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _customDays = prefs.getInt(_customPlanDaysKey) ?? _defaultCustomDays;
+    _allAssignments = _buildCanonicalAssignments();
+  }
+
+  List<ReadingPlan> get availablePlans {
+    return [
+      _buildPlan(30),
+      _buildPlan(90),
+      _buildPlan(180),
+      _buildPlan(365),
+      _buildPlan(_customDays, custom: true),
+    ];
+  }
+
+  ReadingPlan get defaultPlan => _buildPlan(30);
+
+  Future<void> setCustomPlanDays(int days) async {
+    _customDays = days.clamp(7, 1500);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_customPlanDaysKey, _customDays);
+  }
 
   Future<ReadingPlanProgress> getProgress() async {
     final prefs = await SharedPreferences.getInstance();
@@ -131,16 +130,35 @@ class ReadingPlanService {
 
   Future<void> selectPlan(String planName) async {
     final current = await getProgress();
-    final next = ReadingPlanProgress(planName: planName, completedDays: 0);
     if (current.planName == planName) return;
-    await _save(next);
+    await _save(ReadingPlanProgress(planName: planName, completedDays: 0));
+  }
+
+  Future<void> selectPlanByDays(int days, {bool custom = false}) async {
+    final name = custom ? _planNameForDays(days, custom: true) : _planNameForDays(days);
+    if (custom) {
+      await setCustomPlanDays(days);
+    }
+    await selectPlan(name);
+  }
+
+  Future<int> getCustomPlanDays() async {
+    if (_customDays > 0) return _customDays;
+    final prefs = await SharedPreferences.getInstance();
+    _customDays = prefs.getInt(_customPlanDaysKey) ?? _defaultCustomDays;
+    return _customDays;
   }
 
   ReadingPlan getPlanByName(String name) {
-    return availablePlans.firstWhere(
-      (p) => p.name == name,
-      orElse: () => defaultPlan,
-    );
+    final lower = name.toLowerCase();
+    if (lower.contains('custom')) {
+      return _buildPlan(_customDays, custom: true);
+    }
+
+    final match = RegExp(r'(\d+)').firstMatch(name);
+    final days = int.tryParse(match?.group(1) ?? '');
+    if (days == null || days <= 0) return defaultPlan;
+    return _buildPlan(days);
   }
 
   Future<ReadingPlanDay> getTodayAssignment() async {
@@ -164,6 +182,53 @@ class ReadingPlanService {
     await _save(
       ReadingPlanProgress(planName: progress.planName, completedDays: nextDays),
     );
+  }
+
+  List<ReadingAssignment> _buildCanonicalAssignments() {
+    final out = <ReadingAssignment>[];
+    for (final book in _repository.allBookNames) {
+      final chapters =
+          _repository.getChapterNumbers(BibleRepository.defaultTranslation, book);
+      for (final chapter in chapters) {
+        out.add(ReadingAssignment(book: book, chapter: chapter));
+      }
+    }
+    return out;
+  }
+
+  ReadingPlan _buildPlan(int days, {bool custom = false}) {
+    if (_allAssignments.isEmpty) {
+      _allAssignments = _buildCanonicalAssignments();
+    }
+
+    final totalAssignments = _allAssignments.length;
+    final totalDays = days.clamp(1, totalAssignments);
+    final planDays = <ReadingPlanDay>[];
+
+    for (var day = 0; day < totalDays; day++) {
+      final start = (day * totalAssignments / totalDays).floor();
+      var endExclusive = ((day + 1) * totalAssignments / totalDays).floor();
+      if (endExclusive <= start) {
+        endExclusive = start + 1;
+      }
+      if (endExclusive > totalAssignments) {
+        endExclusive = totalAssignments;
+      }
+
+      final chunk = _allAssignments.sublist(start, endExclusive);
+      planDays.add(ReadingPlanDay(day: day + 1, readings: chunk));
+    }
+
+    return ReadingPlan(
+      name: _planNameForDays(totalDays, custom: custom),
+      days: planDays,
+    );
+  }
+
+  String _planNameForDays(int days, {bool custom = false}) {
+    if (custom) return 'Custom Plan ($days days)';
+    if (_presetDays.contains(days)) return '$days Day Plan';
+    return 'Plan ($days days)';
   }
 
   Future<void> _save(ReadingPlanProgress progress) async {

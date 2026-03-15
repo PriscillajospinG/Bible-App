@@ -26,6 +26,8 @@ import 'features/home/services/reading_plan_service.dart';
 import 'features/home/services/reading_progress_service.dart';
 import 'features/home/services/reminder_service.dart';
 import 'features/home/services/streak_service.dart';
+import 'features/home/services/verse_of_day_service.dart';
+import 'features/home/services/prayer_point_service.dart';
 import 'features/settings/accessibility_service.dart';
 import 'features/settings/bible_cache_service.dart';
 import 'features/settings/data_export_service.dart';
@@ -119,7 +121,12 @@ Future<void> main() async {
 
   // Home Step 7 services.
   readingProgressService = ReadingProgressService();
-  readingPlanService = ReadingPlanService();
+  readingPlanService = ReadingPlanService(repository: bibleRepo);
+  try {
+    await readingPlanService.init();
+  } catch (e) {
+    debugPrint('ReadingPlanService init failed: $e');
+  }
   streakService = StreakService();
   try {
     await streakService.updateStreak();
@@ -178,6 +185,15 @@ Future<void> main() async {
   verseSuggestionService = VerseSuggestionService(
     bibleRepo: bibleRepo,
     bibleApi: bibleApiService,
+  );
+  verseOfDayService = VerseOfDayService(
+    verseSuggestionService: verseSuggestionService,
+  );
+  prayerPointService = PrayerPointService(
+    emotionDetection: emotionDetectionService,
+    modelService: gemmaModelService,
+    verseSuggestionService: verseSuggestionService,
+    fallbackGenerator: prayerGeneratorService,
   );
 
   spiritualGuidanceService = SpiritualGuidanceService(
