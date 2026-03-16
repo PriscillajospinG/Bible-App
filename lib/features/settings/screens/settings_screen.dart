@@ -13,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  late TextEditingController _customDaysController;
   late String _translation;
   late ThemeMode _themeMode;
   late String _readingPlan;
@@ -30,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _customDaysController = TextEditingController();
     _translation = settingsService.preferredTranslation;
     _themeMode = settingsService.themeMode;
     _readingPlan =
@@ -38,6 +40,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _highContrast = accessibilityService.highContrast;
     _largeVerseText = accessibilityService.largeVerseText;
     _loadReminderSettings();
+  }
+
+  @override
+  void dispose() {
+    _customDaysController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadReminderSettings() async {
@@ -110,13 +118,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<int?> _pickCustomPlanDays(int initialDays) async {
-    final controller = TextEditingController(text: initialDays.toString());
+    _customDaysController.text = initialDays.toString();
     final result = await showDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Custom Plan Duration'),
         content: TextField(
-          controller: controller,
+          controller: _customDaysController,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
             labelText: 'Number of days',
@@ -130,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final value = int.tryParse(controller.text.trim());
+              final value = int.tryParse(_customDaysController.text.trim());
               if (value == null || value < 7 || value > 1500) {
                 Navigator.of(dialogContext).pop();
                 return;
@@ -142,7 +150,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
-    controller.dispose();
     if (!mounted) return null;
     return result;
   }
