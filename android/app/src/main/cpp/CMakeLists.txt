@@ -7,10 +7,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(
   llama_engine
   SHARED
-  llama_engine.cpp
+  llama_bridge.cpp
 )
 
 find_library(log-lib log)
+find_library(android-lib android)
 
 set(LLAMA_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../native/llama_cpp")
 
@@ -24,5 +25,8 @@ target_include_directories(llama_engine PRIVATE "${LLAMA_CPP_DIR}/include")
 
 target_link_libraries(
   llama_engine
+  PRIVATE
+  llama
+  ${android-lib}
   ${log-lib}
 )

@@ -10,8 +10,8 @@ import '../inference/gemma_ffi.dart';
 import '../prompt_builders/gemma_prompt_builder.dart';
 
 class GemmaModelService {
-  static const _assetModelPath = 'assets/models/gemma-270m.gguf';
-  static const _targetFileName = 'gemma-270m.gguf';
+  static const _assetModelPath = 'assets/models/gemma-2b-it.Q4_K_M.gguf';
+  static const _targetFileName = 'gemma-2b-it.Q4_K_M.gguf';
 
   bool _initialized = false;
   String? _modelFilePath;
