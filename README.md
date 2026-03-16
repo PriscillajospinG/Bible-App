@@ -1,134 +1,163 @@
-# Bible App (Flutter)
+# AI Bible Companion App
 
-Offline AI-powered Bible companion mobile app with:
-- Bible reading and search
-- Panic support guidance flow
-- Journal and prayer support
-- Local-only data and local model inference
+A Flutter-based, AI-powered Bible companion mobile application that combines daily scripture reading, journaling, and contextual spiritual guidance.
 
-No cloud backend is required for core app functionality.
+The app integrates a local Gemma language model to provide biblical encouragement and prayer suggestions while keeping core experiences available offline.
 
-## Requirements
+## Overview
 
-- Flutter SDK (stable)
-- Dart SDK (comes with Flutter)
-- Android Studio and/or Xcode (for device builds)
-- Git
+The goal of this project is to provide a modern spiritual companion that helps users:
 
-Check your setup:
+- read scripture daily
+- reflect through journaling
+- receive AI-guided prayer suggestions
+- seek spiritual encouragement during difficult moments
 
-```bash
-flutter --version
-flutter doctor
+## Main Features
+
+### Home Dashboard
+
+- Verse of the Day
+- Reading streak tracking
+- Prayer points generated from user context
+- Continue Reading shortcut
+
+### Bible Reader
+
+- Browse Old and New Testament
+- Read chapters and verses
+- Bookmark and highlight passages
+
+### Journal
+
+- Write daily reflections
+- AI analyzes journal entries and suggests prayer points
+
+### Kyrie Assistant
+
+- Previously called Panic Button
+- Kyrie means Lord have mercy
+- AI-guided spiritual support during difficult moments
+- Uses a structured guidance dataset plus Gemma reasoning
+
+### AI System
+
+- Local Gemma language model
+- Retrieval-Augmented Generation (RAG)
+- Panic/Kyrie guidance dataset for biblical context
+
+### Reading Plans
+
+- Built-in and custom Bible reading plans
+- Examples: 30 days, 90 days, 365 days
+- Users can create their own custom duration plan
+
+### Reminders
+
+- Daily Bible reading reminder
+- Daily prayer reminder
+- Customizable times
+- Default schedule:
+	- Bible Reading: 6:00 AM
+	- Prayer: 6:40 AM
+
+### Offline Support
+
+- Local AI model support
+- Cached verses
+- Offline journal and reading plans
+
+## Tech Stack
+
+- Flutter
+- Dart
+- Gemma LLM
+- llama.cpp
+- JSON datasets
+- SharedPreferences
+- Flutter Local Notifications
+
+## Project Structure
+
+```text
+lib/
+	ai/
+	core/
+	data/
+	features/
+		bible/
+		home/
+		journal/
+		kyrie/     (implemented in the current codebase under features/panic/)
+		settings/
+
+assets/
+	models/
+	data/
+	bible/
 ```
 
-## Quick Start
+## Installation
 
-1. Clone the repository.
-2. Open the project root (`Bible-App/`).
-3. Install dependencies.
-4. (Optional but recommended) add the local model file.
-5. Run the app.
+1. Clone the repository
+2. Install Flutter dependencies
+3. Add required environment variables
+4. Add the Gemma model file
+5. Run the app
 
 ```bash
-git clone <your-repo-url>
+git clone <repo-url>
 cd Bible-App
 flutter pub get
 flutter run
 ```
 
-## Local Model Setup (Optional)
+## Environment Variables
 
-The app is designed to keep running even if the local model is not available.
+Create a local .env file (already referenced in assets) and add the required keys, for example:
 
-If you want local AI generation enabled:
+```env
+BIBLE_API_KEY=your_api_key_here
+```
 
-1. Download model: `gemma-270m-it-Q4_K_M.gguf`
-2. Place it in: `assets/models/`
-3. Rename to: `gemma-270m.gguf`
+## AI Model Setup
 
-Final expected path:
-
-`assets/models/gemma-270m.gguf`
-
-Model weights are excluded by `.gitignore` and must not be committed.
-
-## Project Structure
+The Gemma model file must be downloaded manually and placed in:
 
 ```text
-Bible-App/
-├── lib/
-│   ├── core/
-│   ├── data/
-│   ├── features/
-│   │   ├── bible/
-│   │   ├── panic/
-│   │   ├── journal/
-│   │   └── home/
-│   ├── ai/
-│   └── main.dart
-├── assets/
-│   ├── bible/
-│   ├── panic/
-│   └── models/
-├── docs/
-├── scripts/
-├── test/
-├── pubspec.yaml
-└── .gitignore
+assets/models/gemma-270m.gguf
 ```
 
-## Data Files
+The application can still run without the model, but AI generation quality and capabilities will be limited.
 
-- Bible datasets: `assets/bible/`
-- Panic dataset: `assets/panic/panic_responses.jsonl`
-- Model directory: `assets/models/`
-
-Datasets can remain in-repo while small. If they grow significantly, move them to downloadable assets via scripts.
-
-## Useful Commands
+## Running and Development Commands
 
 ```bash
-# Get dependencies
 flutter pub get
-
-# Run analyzer
 flutter analyze --no-fatal-infos
-
-# Run tests
 flutter test
-
-# Build release APK
-flutter build apk --release
-```
-
-## Troubleshooting
-
-If asset errors appear (for example missing Bible JSON):
-
-```bash
-flutter clean
-flutter pub get
 flutter run
 ```
 
-If model fails to initialize:
-- Confirm file exists at `assets/models/gemma-270m.gguf`
-- Confirm filename is exact
-- App should still start without model inference
+## Roadmap
+
+- Improved AI reasoning and response quality
+- More personalized verse recommendations
+- Cross-device syncing
+- Continued UI and UX improvements
+- Multilingual support
 
 ## Contributing
 
-1. Create a branch.
-2. Make changes.
-3. Run analyze/tests.
-4. Open a pull request.
+Contributions are welcome. Feel free to open issues, suggest improvements, and submit pull requests.
 
-```bash
-git checkout -b feat/your-change
-flutter analyze --no-fatal-infos
-flutter test
-git add .
-git commit -m "Describe your change"
-git push origin feat/your-change
-```
+Recommended flow:
+
+1. Create a feature branch
+2. Implement and test your changes
+3. Run analyzer and tests
+4. Open a pull request with a clear description
+
+## License
+
+This project is licensed under the terms of the LICENSE file in this repository.
