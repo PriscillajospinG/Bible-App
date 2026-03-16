@@ -23,6 +23,7 @@ class GemmaModelService {
   Future<void> initializeModel() async {
     if (_initialized) return;
 
+    debugPrint('GemmaModelService: initializing model...');
     final modelPath = await _copyModelIfNeeded();
     final threads = Platform.numberOfProcessors.clamp(2, 8);
 
@@ -41,7 +42,7 @@ class GemmaModelService {
 
     _modelFilePath = modelPath;
     _initialized = true;
-    debugPrint('Gemma model initialized successfully');
+    debugPrint('Gemma model initialized');
   }
 
   Future<String> rewriteStructuredResponse({
@@ -63,6 +64,9 @@ class GemmaModelService {
   ///
   /// Returns an empty string if the model is unavailable or produces no text.
   Future<String> generateResponse(String prompt) async {
+    debugPrint('Gemma generating response...');
+    debugPrint('Prompt length: ${prompt.length}');
+
     if (!_initialized) {
       try {
         await initializeModel();
@@ -74,6 +78,7 @@ class GemmaModelService {
 
     // Run inference off the UI isolate.
     final output = await Isolate.run(() => GemmaEngine.instance.generateText(prompt));
+    debugPrint('GemmaModelService: inference complete (chars=${output.length})');
     return output.trim();
   }
 

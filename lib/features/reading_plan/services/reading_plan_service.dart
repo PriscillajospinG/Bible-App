@@ -128,18 +128,19 @@ class ReadingPlanService {
     }
   }
 
-  Future<void> selectPlan(String planName) async {
+  Future<bool> selectPlan(String planName) async {
     final current = await getProgress();
-    if (current.planName == planName) return;
+    if (current.planName == planName) return false;
     await _save(ReadingPlanProgress(planName: planName, completedDays: 0));
+    return true;
   }
 
-  Future<void> selectPlanByDays(int days, {bool custom = false}) async {
+  Future<bool> selectPlanByDays(int days, {bool custom = false}) async {
     final name = custom ? _planNameForDays(days, custom: true) : _planNameForDays(days);
     if (custom) {
       await setCustomPlanDays(days);
     }
-    await selectPlan(name);
+    return selectPlan(name);
   }
 
   Future<int> getCustomPlanDays() async {

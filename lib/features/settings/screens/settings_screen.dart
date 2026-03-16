@@ -77,9 +77,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _savePlan(String planName) async {
-    setState(() => _readingPlan = planName);
     await settingsService.saveSelectedReadingPlan(planName);
-    await readingPlanService.selectPlan(planName);
+    if (!mounted) return;
+    setState(() => _readingPlan = planName);
+  }
+
+  void _showReadingPlanUpdatedMessage() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Reading plan updated'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   String _durationLabelFromPlanName(String planName) {
@@ -99,22 +110,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       if (customDays == null) return;
 
-      await readingPlanService.selectPlanByDays(customDays, custom: true);
+      final changed =
+          await readingPlanService.selectPlanByDays(customDays, custom: true);
       final planName = readingPlanService.getPlanByName('Custom Plan').name;
       await _savePlan(planName);
       if (!mounted) return;
-      setState(() => _readingPlan = planName);
+      if (changed) {
+        _showReadingPlanUpdatedMessage();
+      }
       return;
     }
 
     final days = int.tryParse(label.split(' ').first);
     if (days == null) return;
-    await readingPlanService.selectPlanByDays(days);
+    final changed = await readingPlanService.selectPlanByDays(days);
     if (!mounted) return;
     final planName = readingPlanService.getPlanByName('$days Day Plan').name;
     await _savePlan(planName);
     if (!mounted) return;
-    setState(() => _readingPlan = planName);
+    if (changed) {
+      _showReadingPlanUpdatedMessage();
+    }
   }
 
   Future<int?> _pickCustomPlanDays(int initialDays) async {

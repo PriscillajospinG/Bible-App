@@ -11,11 +11,12 @@ class GemmaPromptBuilder {
     required String emotion,
     required List<BibleVerse> verses,
   }) {
-    final verseBlock = verses.isEmpty
+    final verseReferences = verses.isEmpty
+        ? 'None available.'
+        : verses.map((v) => v.reference).join(', ');
+    final verseText = verses.isEmpty
         ? 'No scripture passages available.'
-        : verses
-            .map((v) => '${v.reference}\n"${v.text.trim()}"')
-            .join('\n\n');
+        : verses.map((v) => '${v.reference}\n"${v.text.trim()}"').join('\n\n');
 
     return '''
 You are a compassionate Christian spiritual guide.
@@ -25,8 +26,14 @@ User problem:
 
 Detected emotional state: $emotion
 
-Relevant Bible verses:
-$verseBlock
+Situation:
+The user is asking for spiritual support for their present struggle.
+
+Relevant scripture references:
+$verseReferences
+
+Relevant scripture text:
+$verseText
 
 Based on these scriptures, provide:
 1. A warm understanding of their situation (2–3 sentences).
@@ -126,15 +133,19 @@ Keep it concise (120-220 words), include 1 short prayer sentence, and do not inv
     List<String> detectedEmotions = const [],
     List<BibleVerse> fetchedVerses = const [],
   }) {
-    final String verses;
+    final String verseReferences;
+    final String verseText;
     if (fetchedVerses.isNotEmpty) {
-      verses = fetchedVerses
+      verseReferences = fetchedVerses.map((v) => v.reference).join(', ');
+      verseText = fetchedVerses
           .map((v) => '${v.reference}\n"${v.text.trim()}"')
           .join('\n\n');
     } else if (entry.response.recommendedVerses.isEmpty) {
-      verses = 'None provided in dataset entry.';
+      verseReferences = 'None provided in dataset entry.';
+      verseText = 'No scripture text available.';
     } else {
-      verses = entry.response.recommendedVerses.join(', ');
+      verseReferences = entry.response.recommendedVerses.join(', ');
+      verseText = 'Scripture text unavailable from API; use references only.';
     }
 
     final emotionTags = entry.emotionTags.isEmpty
@@ -167,8 +178,11 @@ ${entry.response.biblicalExplanation}
 Story example:
 ${entry.response.biblicalStoryExample}
 
-Recommended verses:
-$verses
+Relevant scripture references:
+$verseReferences
+
+Relevant scripture text:
+$verseText
 
 Write a warm pastoral response that:
 - understands the user's struggle

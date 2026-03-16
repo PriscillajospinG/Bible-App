@@ -74,12 +74,33 @@ class BibleApiService {
       '&include-verse-spans=false',
     );
 
-    final response = await http
-        .get(uri, headers: {'api-key': _apiKey})
-        .timeout(_timeout);
+    if (_apiKey.isEmpty) {
+      debugPrint('BibleApiService: BIBLE_API_KEY is empty; using fallback for "$reference"');
+      return _fallbackOrThrow(reference, 'Bible API key missing');
+    }
+
+    http.Response response;
+    try {
+      response = await http
+          .get(
+            uri,
+            headers: {
+              // Keep both header forms for compatibility across API gateways.
+              'Authorization': 'api-key $_apiKey',
+              'api-key': _apiKey,
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(_timeout);
+    } catch (e) {
+      debugPrint('BibleApiService: request failed for "$reference": $e');
+      return _fallbackOrThrow(reference, 'Bible API network error');
+    }
 
     if (response.statusCode != 200) {
-      debugPrint('BibleApiService: HTTP ${response.statusCode} for "$reference"');
+      debugPrint(
+        'BibleApiService: HTTP ${response.statusCode} for "$reference"; falling back to local dataset',
+      );
       return _fallbackOrThrow(
         reference,
         'Bible API ${response.statusCode}',

@@ -121,13 +121,6 @@ class _TodayScreenState extends State<TodayScreen> {
     await readingPlanService.markTodayCompleted();
     if (!mounted) return;
     await _loadTodayData();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Reading plan updated.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   String _greeting() {

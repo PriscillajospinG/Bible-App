@@ -80,6 +80,7 @@ class PanicGuidanceService {
     try {
       final generated = await _modelService.generateResponse(prompt);
       if (generated.trim().isNotEmpty) {
+        debugPrint('PanicGuidanceService: using Gemma-generated response.');
         return PanicGuidanceResult(
           emotion: primaryEmotion,
           entry: entry,
@@ -93,6 +94,7 @@ class PanicGuidanceService {
       debugPrint('Gemma generation failed. Falling back to contextual template.');
     }
 
+    debugPrint('PanicGuidanceService: using fallback response template.');
     return PanicGuidanceResult(
       emotion: primaryEmotion,
       entry: entry,
