@@ -16,7 +16,7 @@ class BibleVerse {
     this.chapter,
   });
 
-  /// Creates a passage verse returned from the api.bible REST endpoint.
+  /// Creates a passage verse from a resolved reference and text payload.
   factory BibleVerse.fromApiPassage({
     required String reference,
     required String text,

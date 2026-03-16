@@ -1,17 +1,19 @@
-import '../../../ai/services/bible_api_service.dart';
+import '../../../core/services/local_bible_service.dart';
 import '../../../data/repositories/bible_repository.dart';
 import '../models/verse_of_day.dart';
 
 /// Maps emotional states to a rotating set of Bible verses.
 ///
-/// Priority: API (via [BibleApiService], which includes caching) ->
-/// local [BibleRepository] -> hard-coded KJV fallback texts.
+/// Priority: local NLT dataset via [LocalBibleService] -> repository lookup ->
+/// hard-coded fallback texts.
 class VerseSuggestionService {
-  VerseSuggestionService({required this.bibleRepo, BibleApiService? bibleApi})
-      : _bibleApi = bibleApi;
+  VerseSuggestionService({
+    required this.bibleRepo,
+    required LocalBibleService localBible,
+  }) : _localBible = localBible;
 
   final BibleRepository bibleRepo;
-  final BibleApiService? _bibleApi;
+  final LocalBibleService _localBible;
 
   static const _emotionReferences = <String, List<String>>{
     'anxiety': ['Philippians 4:6', '1 Peter 5:7', 'Matthew 6:34'],
@@ -115,17 +117,15 @@ class VerseSuggestionService {
   }
 
   Future<VerseOfDay> _getVerseForReference(String reference, String emotion) async {
-    if (_bibleApi != null) {
-      try {
-        final apiVerse = await _bibleApi!.fetchVerse(reference);
-        return VerseOfDay(
-          reference: apiVerse.reference,
-          text: apiVerse.text,
-          emotion: emotion,
-        );
-      } catch (_) {
-        // Fall through to local lookup.
-      }
+    try {
+      final localVerse = _localBible.getPassage(reference);
+      return VerseOfDay(
+        reference: localVerse.reference,
+        text: localVerse.text,
+        emotion: emotion,
+      );
+    } catch (_) {
+      // Fall through to repository lookup.
     }
 
     String text;
@@ -138,7 +138,7 @@ class VerseSuggestionService {
       final chapter = int.parse(match.group(2)!);
       final verseNum = int.parse(match.group(3)!);
 
-      final verse = bibleRepo.getVerse('KJV', book, chapter, verseNum);
+      final verse = bibleRepo.getVerse(BibleRepository.defaultTranslation, book, chapter, verseNum);
       text = verse?.text ?? _fallbacks[reference] ?? reference;
     } catch (_) {
       text = _fallbacks[reference] ?? reference;

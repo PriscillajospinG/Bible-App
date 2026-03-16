@@ -1,18 +1,16 @@
 import 'package:flutter/foundation.dart';
 
-import '../../ai/services/bible_api_service.dart';
 import '../../ai/services/emotion_detection_service.dart';
 import '../../ai/services/emotion_verses_repository.dart';
-import '../../ai/services/fallback_bible_service.dart';
 import '../../ai/services/gemma_model_service.dart';
 import '../../ai/services/journal_reflection_service.dart';
 import '../../ai/services/spiritual_guidance_service.dart';
-import '../../ai/services/verse_cache_service.dart';
 import '../../data/repositories/bible_repository.dart';
 import '../../data/repositories/panic_response_repository.dart';
 import '../../data/datasources/favorites_service.dart';
 import '../../data/datasources/panic_dataset_service.dart';
 import '../../data/datasources/panic_search_service.dart';
+import 'local_bible_service.dart';
 import '../../features/journal/repositories/journal_repository.dart';
 import '../../features/journal/services/prayer_generator_service.dart';
 import '../../features/journal/services/verse_suggestion_service.dart';
@@ -71,14 +69,12 @@ late final ReminderService reminderService;
 
 // ── Local AI Step 9 ─────────────────────────────────────────────────────────
 late final GemmaModelService gemmaModelService;
+late final LocalBibleService localBibleService;
 final aiModelReadyNotifier = ValueNotifier<bool>(false);
 final aiModelInitInProgressNotifier = ValueNotifier<bool>(false);
 
 // ── RAG Pipeline ─────────────────────────────────────────────────────────────
 late final EmotionVersesRepository emotionVersesRepository;
-late final FallbackBibleService fallbackBibleService;
-late final BibleApiService bibleApiService;
-late final VerseCacheService verseCacheService;
 late final SpiritualGuidanceService spiritualGuidanceService;
 late final JournalReflectionService journalReflectionService;
 

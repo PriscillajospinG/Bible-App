@@ -123,7 +123,7 @@ Keep it concise (120-220 words), include 1 short prayer sentence, and do not inv
 
   /// Builds the panic RAG prompt using a retrieved [PanicEntry].
   ///
-  /// If [fetchedVerses] are provided (fetched via [BibleApiService]), their
+  /// If [fetchedVerses] are provided (resolved from the local Bible dataset), their
   /// full text is included in the prompt; otherwise only the reference strings
   /// from the dataset entry are listed.
   static String buildPanicGuidancePrompt({

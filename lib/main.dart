@@ -5,12 +5,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ai/services/gemma_model_service.dart';
 import 'ai/services/emotion_detection_service.dart';
 import 'ai/services/emotion_verses_repository.dart';
-import 'ai/services/fallback_bible_service.dart';
-import 'ai/services/bible_api_service.dart';
-import 'ai/services/verse_cache_service.dart';
 import 'ai/services/spiritual_guidance_service.dart';
 import 'ai/services/journal_reflection_service.dart';
 import 'core/services/service_locator.dart';
+import 'core/services/local_bible_service.dart';
 import 'data/repositories/bible_repository.dart';
 import 'data/datasources/favorites_service.dart';
 import 'data/datasources/panic_dataset_service.dart';
@@ -145,10 +143,16 @@ Future<void> main() async {
 
   // Local AI (Gemma) service.
   gemmaModelService = GemmaModelService();
+  localBibleService = LocalBibleService(repository: bibleRepo);
+  try {
+    await localBibleService.loadBible();
+  } catch (e) {
+    debugPrint('LocalBibleService init failed: $e');
+  }
   aiModelReadyNotifier.value = false;
   aiModelInitInProgressNotifier.value = false;
 
-  // RAG pipeline services (Bible API + verse cache + guidance + journal AI).
+  // RAG pipeline services (offline local Bible + guidance + journal AI).
   // Shared emotion → verse map (loaded once, injected into both RAG services).
   emotionVersesRepository = EmotionVersesRepository();
   try {
@@ -157,32 +161,14 @@ Future<void> main() async {
     debugPrint('EmotionVersesRepository init failed: $e');
   }
 
-  // Offline-first Bible fallback (KJV flat JSON, no network needed).
-  fallbackBibleService = FallbackBibleService();
-  try {
-    await fallbackBibleService.init();
-  } catch (e) {
-    debugPrint('FallbackBibleService init failed: $e');
-  }
-
-  // Verse cache must be initialized before BibleApiService so it can be injected.
-  verseCacheService = VerseCacheService();
-  try {
-    await verseCacheService.init();
-  } catch (e) {
-    debugPrint('VerseCacheService init failed: $e');
-  }
-
-  bibleApiService = BibleApiService(fallback: fallbackBibleService, cache: verseCacheService);
-
-  // verseSuggestionService is wired here (after bibleApiService) so it can
-  // use the API for verse lookups with built-in cache + fallback.
+  // verseSuggestionService is wired here after LocalBibleService is ready so
+  // all verse lookups come from the bundled NLT dataset.
   verseSuggestionService = VerseSuggestionService(
     bibleRepo: bibleRepo,
-    bibleApi: bibleApiService,
+    localBible: localBibleService,
   );
   verseOfDayService = VerseOfDayService(
-    bibleApi: bibleApiService,
+    localBible: localBibleService,
   );
   prayerPointService = PrayerPointService(
     emotionDetection: emotionDetectionService,
@@ -192,15 +178,13 @@ Future<void> main() async {
 
   spiritualGuidanceService = SpiritualGuidanceService(
     emotionDetection: emotionDetectionService,
-    bibleApi: bibleApiService,
-    verseCache: verseCacheService,
+    localBible: localBibleService,
     emotionVerses: emotionVersesRepository,
     modelService: gemmaModelService,
   );
   journalReflectionService = JournalReflectionService(
     emotionDetection: emotionDetectionService,
-    bibleApi: bibleApiService,
-    verseCache: verseCacheService,
+    localBible: localBibleService,
     emotionVerses: emotionVersesRepository,
     modelService: gemmaModelService,
   );
@@ -245,7 +229,7 @@ Future<void> main() async {
     emotionDetection: emotionDetectionService,
     searchService: panicSearchService,
     modelService: gemmaModelService,
-    bibleApi: bibleApiService,
+    localBible: localBibleService,
   );
   semanticPanicSearchService =
       SemanticPanicSearchService(repository: panicRepo);

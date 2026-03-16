@@ -1,8 +1,8 @@
-import '../../../ai/services/bible_api_service.dart';
 import '../../../ai/services/emotion_detection_service.dart';
 import '../../../ai/services/gemma_model_service.dart';
 import '../../../ai/prompt_builders/gemma_prompt_builder.dart';
 import 'package:flutter/foundation.dart';
+import '../../../core/services/local_bible_service.dart';
 import '../../../data/models/bible_verse.dart';
 import '../../../data/models/panic_entry.dart';
 import '../../../data/datasources/panic_search_service.dart';
@@ -11,7 +11,7 @@ class PanicGuidanceResult {
   final String emotion;
   final PanicEntry entry;
   final String responseText;
-  /// Verse texts fetched from [BibleApiService] for the recommended references.
+  /// Verse texts resolved from the bundled local NLT dataset.
   final List<BibleVerse> fetchedVerses;
 
   const PanicGuidanceResult({
@@ -26,23 +26,23 @@ class PanicGuidanceResult {
 ///
 /// Flow:
 ///   user message -> emotion detection -> dataset retrieval -> verse fetch
-///   (via [BibleApiService]) -> prompt builder -> Gemma model inference
+///   (via [LocalBibleService]) -> prompt builder -> Gemma model inference
 ///   -> generated response.
 class PanicGuidanceService {
   PanicGuidanceService({
     required EmotionDetectionService emotionDetection,
     required PanicSearchService searchService,
     required GemmaModelService modelService,
-    BibleApiService? bibleApi,
+    required LocalBibleService localBible,
   })  : _emotionDetection = emotionDetection,
         _searchService = searchService,
         _modelService = modelService,
-        _bibleApi = bibleApi;
+        _localBible = localBible;
 
   final EmotionDetectionService _emotionDetection;
   final PanicSearchService _searchService;
   final GemmaModelService _modelService;
-  final BibleApiService? _bibleApi;
+  final LocalBibleService _localBible;
 
   Future<PanicGuidanceResult> handleUserMessage(String message) async {
     if (!_modelService.isInitialized) {
@@ -57,15 +57,13 @@ class PanicGuidanceService {
       detectedEmotions: detectedEmotions,
     );
 
-    // Fetch actual verse text for up to 2 recommended verses from the API.
+    // Fetch actual verse text for up to 2 recommended verses from the local dataset.
     final fetchedVerses = <BibleVerse>[];
-    if (_bibleApi != null) {
-      for (final ref in entry.response.recommendedVerses.take(2)) {
-        try {
-          fetchedVerses.add(await _bibleApi!.fetchVerse(ref));
-        } catch (_) {
-          // Skip verses that fail to fetch; fallback references still in prompt.
-        }
+    for (final ref in entry.response.recommendedVerses.take(2)) {
+      try {
+        fetchedVerses.add(_localBible.getPassage(ref));
+      } catch (_) {
+        // Skip verses that fail to resolve; fallback references still in prompt.
       }
     }
 

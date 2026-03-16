@@ -1,10 +1,9 @@
 import '../../data/models/bible_verse.dart';
-import 'bible_api_service.dart';
 import 'emotion_verses_repository.dart';
 import 'emotion_detection_service.dart';
 import 'gemma_model_service.dart';
 import '../prompt_builders/gemma_prompt_builder.dart';
-import 'verse_cache_service.dart';
+import '../../core/services/local_bible_service.dart';
 
 /// Result returned by [JournalReflectionService.analyzeEntry].
 class JournalReflectionResult {
@@ -24,26 +23,23 @@ class JournalReflectionResult {
 ///   journal text
 ///   → EmotionDetectionService
 ///   → emotion → verse references (from emotion_verses.json)
-///   → BibleApiService / VerseCacheService
+///   → LocalBibleService
 ///   → GemmaPromptBuilder.buildJournalPrompt
 ///   → GemmaModelService
 ///   → JournalReflectionResult
 class JournalReflectionService {
   JournalReflectionService({
     required EmotionDetectionService emotionDetection,
-    required BibleApiService bibleApi,
-    required VerseCacheService verseCache,
+    required LocalBibleService localBible,
     required GemmaModelService modelService,
     required EmotionVersesRepository emotionVerses,
   })  : _emotionDetection = emotionDetection,
-        _bibleApi = bibleApi,
-        _verseCache = verseCache,
+        _localBible = localBible,
         _modelService = modelService,
         _emotionVerses = emotionVerses;
 
   final EmotionDetectionService _emotionDetection;
-  final BibleApiService _bibleApi;
-  final VerseCacheService _verseCache;
+  final LocalBibleService _localBible;
   final GemmaModelService _modelService;
   final EmotionVersesRepository _emotionVerses;
 
@@ -56,7 +52,7 @@ class JournalReflectionService {
     // 2. Get verse references for the dominant emotion
     final references = _emotionVerses.versesFor(primaryEmotion);
 
-    // 3. Fetch top 2 verses (cache-first, API fallback)
+    // 3. Fetch top 2 verses from the bundled local NLT dataset.
     final verses = await _fetchVerses(references.take(2).toList());
 
     // 4. Generate prayer points with Gemma only.
@@ -83,12 +79,7 @@ class JournalReflectionService {
     final verses = <BibleVerse>[];
     for (final ref in references) {
       try {
-        var verse = _verseCache.getCached(ref);
-        if (verse == null) {
-          verse = await _bibleApi.fetchPassage(ref);
-          await _verseCache.cache(ref, verse);
-        }
-        verses.add(verse);
+        verses.add(_localBible.getPassage(ref));
       } catch (_) {
         // Skip verses that fail to load; others may still succeed.
       }

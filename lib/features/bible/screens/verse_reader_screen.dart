@@ -145,22 +145,12 @@ class _VerseReaderScreenState extends State<VerseReaderScreen> {
     final item = _withContext(verse);
     final reference = '${item.book} ${item.chapter}:${item.verse}';
 
-    // Attempt to enrich the verse text with the canonical API version.
-    // If the API is unavailable the locally-loaded text is used as-is.
-    String verseText = item.text;
-    try {
-      final apiVerse = await bibleApiService.fetchVerse(reference);
-      if (apiVerse.text.trim().isNotEmpty) verseText = apiVerse.text.trim();
-    } catch (_) {
-      // Silently keep the local text on any failure.
-    }
-
     if (!mounted) return;
     await showDialog<void>(
       context: context,
       builder: (_) => _ShareVerseDialog(
         reference: reference,
-        text: verseText,
+        text: item.text,
         translation: item.translation ?? widget.translation,
       ),
     );

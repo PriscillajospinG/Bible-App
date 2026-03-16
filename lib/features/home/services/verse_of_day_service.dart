@@ -2,14 +2,15 @@ import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../ai/services/bible_api_service.dart';
+import '../../../core/services/local_bible_service.dart';
 import '../../journal/models/verse_of_day.dart';
 
 /// Resolves and caches a single Verse of the Day per calendar date.
 ///
 /// The chosen verse remains stable for the whole day and refreshes the next day.
 class VerseOfDayService {
-  VerseOfDayService({required BibleApiService bibleApi}) : _bibleApi = bibleApi;
+  VerseOfDayService({required LocalBibleService localBible})
+      : _localBible = localBible;
 
   static const _dateKey = 'last_verse_date';
   static const _referenceKey = 'last_verse_reference';
@@ -40,7 +41,7 @@ class VerseOfDayService {
         'Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.',
   };
 
-  final BibleApiService _bibleApi;
+  final LocalBibleService _localBible;
 
   Future<VerseOfDay> getVerseOfTheDay() async {
     final prefs = await SharedPreferences.getInstance();
@@ -64,17 +65,10 @@ class VerseOfDayService {
     final yesterdayReference = prefs.getString(_referenceKey);
     final reference = _pickReference(excluding: yesterdayReference);
 
-    VerseOfDay verse;
-    try {
-      final fetched = await _bibleApi.fetchVerse(reference);
-      verse = VerseOfDay(
-        reference: fetched.reference,
-        text: fetched.text,
-        emotion: 'daily',
-      );
-    } catch (e) {
-      verse = _fallbackVerse(excluding: yesterdayReference);
-    }
+    final verse = _resolveLocalVerse(
+      reference,
+      excluding: yesterdayReference,
+    );
 
     await prefs.setString(_dateKey, today);
     await prefs.setString(_referenceKey, verse.reference);
@@ -96,6 +90,19 @@ class VerseOfDayService {
 
   String _dateOnly(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  VerseOfDay _resolveLocalVerse(String reference, {String? excluding}) {
+    try {
+      final fetched = _localBible.getPassage(reference);
+      return VerseOfDay(
+        reference: fetched.reference,
+        text: fetched.text,
+        emotion: 'daily',
+      );
+    } catch (_) {
+      return _fallbackVerse(excluding: excluding);
+    }
+  }
 
   VerseOfDay _fallbackVerse({String? excluding}) {
     final references = _fallbackVerseText.keys.toList(growable: false);
