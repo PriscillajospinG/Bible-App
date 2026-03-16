@@ -2,13 +2,12 @@
 // Bridge between Flutter FFI and llama.cpp.
 //
 // Compile-time behaviour:
-//   WITH llama.cpp  (llama.cpp/CMakeLists.txt present) → real inference
-//   WITHOUT         → safe stub that returns a canned string so the app
-//                     remains runnable on a build host that lacks the library.
+//   WITH llama.cpp (native/llama_cpp present) → real inference
+//   WITHOUT llama.cpp                         → hard error result.
 //
 // API pinned to llama.cpp b3447+ (sampler-chain API).
 // Place llama.cpp as a git submodule at:
-//   android/app/src/main/cpp/llama.cpp/
+//   native/llama_cpp/
 
 #include "llama_engine.h"
 
@@ -17,11 +16,8 @@
 #include <string>
 #include <vector>
 
-#if __has_include("llama.cpp/include/llama.h")
-  #include "llama.cpp/include/llama.h"
-  #define HAVE_LLAMA_CPP 1
-#elif __has_include("llama.h")
-  #include "llama.h"
+#if __has_include("llama.h")
+    #include "llama.h"
   #define HAVE_LLAMA_CPP 1
 #else
   #define HAVE_LLAMA_CPP 0
@@ -89,7 +85,7 @@ extern "C" int32_t llama_init_model(const char* model_path,
     return 1;
 #else
     (void)model_path; (void)threads; (void)context_size; (void)batch_size;
-    return 1; // stub: always reports success
+    return 0;
 #endif
 }
 
@@ -183,12 +179,8 @@ extern "C" const char* llama_generate_text(const char* prompt) {
     return heap_string(output.empty() ? "[No output generated]" : output);
 
 #else
-    // ── Stub path: used when llama.cpp is not linked ──────────────────────
-    // Returns a clearly-marked placeholder so developers can distinguish
-    // stub output from real inference during integration testing.
-    std::string stub = "[Gemma stub — add llama.cpp submodule to enable real inference] ";
-    if (prompt != nullptr) stub += prompt;
-    return heap_string(stub);
+    (void)prompt;
+    return heap_string("[Error] llama.cpp is not linked.");
 #endif
 }
 

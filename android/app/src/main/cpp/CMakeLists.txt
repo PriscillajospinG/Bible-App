@@ -12,14 +12,15 @@ add_library(
 
 find_library(log-lib log)
 
-# Optional llama.cpp integration:
-# Place llama.cpp sources at android/app/src/main/cpp/llama.cpp
-# (containing llama.h + CMakeLists.txt), then this auto-links against it.
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/CMakeLists.txt")
-  add_subdirectory(llama.cpp)
-  target_link_libraries(llama_engine PRIVATE llama)
-  target_compile_definitions(llama_engine PRIVATE USE_LLAMA_CPP=1)
+set(LLAMA_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../native/llama_cpp")
+
+if (NOT EXISTS "${LLAMA_CPP_DIR}/CMakeLists.txt")
+  message(FATAL_ERROR "llama.cpp submodule missing at native/llama_cpp")
 endif()
+
+add_subdirectory("${LLAMA_CPP_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/llama_cpp_build")
+target_link_libraries(llama_engine PRIVATE llama)
+target_include_directories(llama_engine PRIVATE "${LLAMA_CPP_DIR}/include")
 
 target_link_libraries(
   llama_engine

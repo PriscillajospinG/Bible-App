@@ -149,9 +149,8 @@ extern "C" const char* llama_generate_text(const char* prompt) {
     return heap_string(output.empty() ? "[No output generated]" : output);
 
 #else
-    std::string stub = "[iOS stub — add llama.cpp to Runner target] ";
-    if (prompt != nullptr) stub += prompt;
-    return heap_string(stub);
+    (void)prompt;
+    return heap_string("[Error] llama.cpp is not linked in Runner target.");
 #endif
 }
 

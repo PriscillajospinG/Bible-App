@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../data/models/panic_response.dart';
-import '../inference/gemma_engine.dart';
+import '../inference/gemma_ffi.dart';
 import '../prompt_builders/gemma_prompt_builder.dart';
 
 class GemmaModelService {
@@ -27,7 +27,7 @@ class GemmaModelService {
     final modelPath = await _copyModelIfNeeded();
     final threads = Platform.numberOfProcessors.clamp(2, 8);
 
-    final ok = GemmaEngine.instance.initModel(
+    final ok = GemmaFfi.instance.initializeModel(
       modelPath: modelPath,
       threads: threads,
       contextSize: 2048,
@@ -73,8 +73,13 @@ class GemmaModelService {
 
     debugPrint('Generating tokens...');
     // Run inference off the UI isolate.
-    final output = await Isolate.run(() => GemmaEngine.instance.generateText(prompt));
+    final output = await Isolate.run(() => GemmaFfi.instance.generateResponse(prompt));
     final trimmed = output.trim();
+    if (trimmed.startsWith('[Error]') ||
+        trimmed.toLowerCase().contains('gemma stub') ||
+        trimmed.toLowerCase().contains('llama.cpp submodule')) {
+      throw Exception('Native inference returned non-model output: $trimmed');
+    }
     if (trimmed.isEmpty) {
       throw Exception('Gemma inference returned empty output.');
     }
