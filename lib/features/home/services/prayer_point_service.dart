@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../ai/services/emotion_detection_service.dart';
 import '../../../ai/services/gemma_model_service.dart';
 import '../../journal/models/journal_entry.dart';
-import '../../journal/services/prayer_generator_service.dart';
 import '../../journal/services/verse_suggestion_service.dart';
 import '../../kyrie/services/panic_history_service.dart';
 
@@ -13,17 +12,15 @@ import '../../kyrie/services/panic_history_service.dart';
 ///
 /// Pipeline:
 ///   context text -> emotion detection -> relevant verses -> Gemma generation
-///   -> parsed prayer points with local fallback.
+///   -> parsed prayer points.
 class PrayerPointService {
   PrayerPointService({
     required EmotionDetectionService emotionDetection,
     required GemmaModelService modelService,
     required VerseSuggestionService verseSuggestionService,
-    required PrayerGeneratorService fallbackGenerator,
   })  : _emotionDetection = emotionDetection,
         _modelService = modelService,
-        _verseSuggestionService = verseSuggestionService,
-        _fallbackGenerator = fallbackGenerator;
+        _verseSuggestionService = verseSuggestionService;
 
   static const _dateKey = 'daily_prayer_points_date';
   static const _pointsKey = 'daily_prayer_points_payload';
@@ -31,7 +28,6 @@ class PrayerPointService {
   final EmotionDetectionService _emotionDetection;
   final GemmaModelService _modelService;
   final VerseSuggestionService _verseSuggestionService;
-  final PrayerGeneratorService _fallbackGenerator;
 
   Future<List<String>> getPrayerPointsForToday({
     JournalEntry? latestJournal,
@@ -78,7 +74,7 @@ class PrayerPointService {
         final verse = await _verseSuggestionService.getVerseForEmotion(emotion);
         verses.add('${verse.reference}: ${verse.cleanText}');
       } catch (_) {
-        // Continue with remaining verses and fallback logic.
+        // Continue with remaining verses.
       }
     }
 
@@ -88,18 +84,13 @@ class PrayerPointService {
       verses: verses,
     );
 
-    List<String> points = const [];
-    try {
-      final generated = await _modelService.generateResponse(prompt);
-      if (!_isPlaceholderOutput(generated)) {
-        points = _parsePrayerPoints(generated);
-      }
-    } catch (_) {
-      // Fallback below when model fails.
+    final generated = await _modelService.generateResponse(prompt);
+    if (_isPlaceholderOutput(generated)) {
+      throw Exception('Gemma produced placeholder output for prayer points.');
     }
-
+    final points = _parsePrayerPoints(generated);
     if (points.isEmpty) {
-      points = _fallbackPrayerPoints(normalizedEmotions);
+      throw Exception('Gemma output did not contain prayer points.');
     }
 
     final finalPoints = points.take(3).toList(growable: false);
@@ -170,21 +161,6 @@ Rules:
         lower.contains('llama.cpp submodule') ||
         lower.contains('developer message') ||
         lower.contains('debug');
-  }
-
-  List<String> _fallbackPrayerPoints(List<String> emotions) {
-    final generated = _fallbackGenerator.generatePrayerPoints(emotions);
-    final cleaned = generated
-        .where((p) => !_isPlaceholderOutput(p))
-        .take(3)
-        .toList(growable: false);
-    if (cleaned.isNotEmpty) return cleaned;
-
-    return const [
-      'Pray for strength and peace today.',
-      'Ask God for wisdom in every decision you face.',
-      'Thank the Lord for His presence and mercy over your day.',
-    ];
   }
 
   String _dateOnly(DateTime d) =>

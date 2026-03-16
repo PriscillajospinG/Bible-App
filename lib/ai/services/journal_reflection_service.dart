@@ -26,7 +26,7 @@ class JournalReflectionResult {
 ///   → emotion → verse references (from emotion_verses.json)
 ///   → BibleApiService / VerseCacheService
 ///   → GemmaPromptBuilder.buildJournalPrompt
-///   → GemmaModelService (or rule-based fallback)
+///   → GemmaModelService
 ///   → JournalReflectionResult
 class JournalReflectionService {
   JournalReflectionService({
@@ -59,25 +59,17 @@ class JournalReflectionService {
     // 3. Fetch top 2 verses (cache-first, API fallback)
     final verses = await _fetchVerses(references.take(2).toList());
 
-    // 4. Generate prayer points
-    List<String> prayerPoints;
-    String? aiReflection;
-
-    if (_modelService.isInitialized && verses.isNotEmpty) {
-      try {
-        final prompt = GemmaPromptBuilder.buildJournalPrompt(
-          journalText: journalText,
-          emotion: primaryEmotion,
-          verses: verses,
-        );
-        aiReflection = await _modelService.generateFromPrompt(prompt);
-        prayerPoints = _parsePrayerPoints(aiReflection);
-      } catch (_) {
-        prayerPoints = _buildRuleBasedPoints(primaryEmotion, verses);
-      }
-    } else {
-      prayerPoints = _buildRuleBasedPoints(primaryEmotion, verses);
+    // 4. Generate prayer points with Gemma only.
+    final prompt = GemmaPromptBuilder.buildJournalPrompt(
+      journalText: journalText,
+      emotion: primaryEmotion,
+      verses: verses,
+    );
+    final aiReflection = await _modelService.generateFromPrompt(prompt);
+    if (aiReflection.trim().isEmpty) {
+      throw Exception('Gemma returned empty journal reflection output.');
     }
+    final prayerPoints = _parsePrayerPoints(aiReflection);
 
     return JournalReflectionResult(
       emotions: emotions,
@@ -112,20 +104,13 @@ class JournalReflectionService {
         points.add(match.group(1)!);
       }
     }
-    return points.isEmpty ? [aiText.trim()] : points;
-  }
-
-  List<String> _buildRuleBasedPoints(
-      String emotion, List<BibleVerse> verses) {
-    final ref0 = verses.isNotEmpty ? ' (${verses.first.reference})' : '';
-    final ref1 =
-        verses.length > 1 ? ' (${verses[1].reference})' : '';
-    return [
-      'Ask God for comfort and peace in your season of $emotion$ref0.',
-      verses.length > 1
-          ? 'Pray for strength to trust God\'s word$ref1.'
-          : 'Pray for strength to hold onto God\'s promises.',
-      'Thank God for His presence and ask for guidance in your next steps.',
-    ];
+    if (points.isEmpty) {
+      final text = aiText.trim();
+      if (text.isEmpty) {
+        throw Exception('Gemma journal output could not be parsed.');
+      }
+      return [text];
+    }
+    return points;
   }
 }

@@ -23,7 +23,7 @@ class GemmaModelService {
   Future<void> initializeModel() async {
     if (_initialized) return;
 
-    debugPrint('GemmaModelService: initializing model...');
+    debugPrint('Loading Gemma model...');
     final modelPath = await _copyModelIfNeeded();
     final threads = Platform.numberOfProcessors.clamp(2, 8);
 
@@ -55,7 +55,7 @@ class GemmaModelService {
     );
     final output = await generateResponse(prompt);
     if (output.trim().isEmpty) {
-      return _fallbackFromStructured(panicResponse);
+      throw Exception('Gemma returned empty output.');
     }
     return output.trim();
   }
@@ -68,18 +68,18 @@ class GemmaModelService {
     debugPrint('Prompt length: ${prompt.length}');
 
     if (!_initialized) {
-      try {
-        await initializeModel();
-      } catch (e) {
-        debugPrint('GemmaModelService: model unavailable, using fallback. $e');
-        return '';
-      }
+      throw Exception('Gemma model not initialized.');
     }
 
+    debugPrint('Generating tokens...');
     // Run inference off the UI isolate.
     final output = await Isolate.run(() => GemmaEngine.instance.generateText(prompt));
-    debugPrint('GemmaModelService: inference complete (chars=${output.length})');
-    return output.trim();
+    final trimmed = output.trim();
+    if (trimmed.isEmpty) {
+      throw Exception('Gemma inference returned empty output.');
+    }
+    debugPrint('Gemma inference completed');
+    return trimmed;
   }
 
   /// Backward-compatible wrapper used by older services.
@@ -109,14 +109,7 @@ class GemmaModelService {
       );
       return outFile.path;
     } catch (e) {
-      throw StateError(
-        'Model asset missing at $_assetModelPath. Add gemma-270m.gguf under assets/models/. Original error: $e',
-      );
+      throw Exception('Gemma model file missing. AI system cannot start.');
     }
-  }
-
-  String _fallbackFromStructured(PanicResponse response) {
-    final c = response.response;
-    return '${c.understandingUserQuery}\n\n${c.biblicalExplanation}\n\n${c.shortPrayer}';
   }
 }

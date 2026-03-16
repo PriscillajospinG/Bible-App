@@ -11,7 +11,6 @@ class PanicGuidanceResult {
   final String emotion;
   final PanicEntry entry;
   final String responseText;
-  final bool usedFallback;
   /// Verse texts fetched from [BibleApiService] for the recommended references.
   final List<BibleVerse> fetchedVerses;
 
@@ -19,7 +18,6 @@ class PanicGuidanceResult {
     required this.emotion,
     required this.entry,
     required this.responseText,
-    required this.usedFallback,
     this.fetchedVerses = const [],
   });
 }
@@ -29,7 +27,7 @@ class PanicGuidanceResult {
 /// Flow:
 ///   user message -> emotion detection -> dataset retrieval -> verse fetch
 ///   (via [BibleApiService]) -> prompt builder -> Gemma model inference
-///   -> fallback to static dataset response on failure.
+///   -> generated response.
 class PanicGuidanceService {
   PanicGuidanceService({
     required EmotionDetectionService emotionDetection,
@@ -77,54 +75,17 @@ class PanicGuidanceService {
     debugPrint('Gemma generating response...');
     debugPrint('Prompt length: ${prompt.length}');
 
-    try {
-      final generated = await _modelService.generateResponse(prompt);
-      if (generated.trim().isNotEmpty) {
-        debugPrint('PanicGuidanceService: using Gemma-generated response.');
-        return PanicGuidanceResult(
-          emotion: primaryEmotion,
-          entry: entry,
-          responseText: generated.trim(),
-          usedFallback: false,
-          fetchedVerses: fetchedVerses,
-        );
-      }
-    } catch (_) {
-      // Fall back to dataset response below.
-      debugPrint('Gemma generation failed. Falling back to contextual template.');
+    final generated = await _modelService.generateResponse(prompt);
+    if (generated.trim().isEmpty) {
+      throw Exception('Gemma returned empty panic guidance output.');
     }
 
-    debugPrint('PanicGuidanceService: using fallback response template.');
+    debugPrint('PanicGuidanceService: using Gemma-generated response.');
     return PanicGuidanceResult(
       emotion: primaryEmotion,
       entry: entry,
-      responseText: _buildFallback(entry, fetchedVerses),
-      usedFallback: true,
+      responseText: generated.trim(),
       fetchedVerses: fetchedVerses,
     );
-  }
-
-  String _buildFallback(PanicEntry entry, List<BibleVerse> fetchedVerses) {
-    final c = entry.response;
-    final emotionHint = entry.emotionTags.isEmpty
-        ? 'overwhelmed'
-        : entry.emotionTags.first;
-
-    final String verseLine;
-    if (fetchedVerses.isNotEmpty) {
-      final lines = fetchedVerses
-          .map((v) => '${v.reference} — ${v.text.trim()}')
-          .join('\n');
-      verseLine = '\n\nVerses:\n$lines';
-    } else if (c.recommendedVerses.isEmpty) {
-      verseLine = '';
-    } else {
-      verseLine = '\n\nRecommended verses: ${c.recommendedVerses.join(', ')}';
-    }
-
-    return 'It sounds like you\'re experiencing $emotionHint, and your feelings matter deeply before God. '
-        '${c.biblicalExplanation} '
-        'Remember this biblical picture: ${c.biblicalStoryExample}. '
-        '${c.shortPrayer}$verseLine';
   }
 }

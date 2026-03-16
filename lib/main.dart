@@ -145,13 +145,8 @@ Future<void> main() async {
 
   // Local AI (Gemma) service.
   gemmaModelService = GemmaModelService();
-  try {
-    await gemmaModelService.initialize();
-    debugPrint('Gemma model initialized successfully');
-  } catch (e) {
-    // Keep app fully functional even if model/native engine isn't ready yet.
-    debugPrint('Gemma model not initialized: $e');
-  }
+  await gemmaModelService.initialize();
+  debugPrint('Gemma model initialized successfully');
 
   // RAG pipeline services (Bible API + verse cache + guidance + journal AI).
   // Shared emotion → verse map (loaded once, injected into both RAG services).
@@ -193,7 +188,6 @@ Future<void> main() async {
     emotionDetection: emotionDetectionService,
     modelService: gemmaModelService,
     verseSuggestionService: verseSuggestionService,
-    fallbackGenerator: prayerGeneratorService,
   );
 
   spiritualGuidanceService = SpiritualGuidanceService(

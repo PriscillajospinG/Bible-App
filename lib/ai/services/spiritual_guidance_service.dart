@@ -20,7 +20,7 @@ class GuidanceResult {
     required this.emotion,
     required this.verses,
     required this.guidance,
-    this.usedAiModel = false,
+    this.usedAiModel = true,
   });
 }
 
@@ -29,7 +29,7 @@ class GuidanceResult {
 ///   → emotion → verse references (emotion_verses.json)
 ///   → VerseCacheService / BibleApiService
 ///   → GemmaPromptBuilder.buildGuidancePrompt
-///   → GemmaModelService (or template fallback)
+///   → GemmaModelService
 ///   → GuidanceResult
 class SpiritualGuidanceService {
   SpiritualGuidanceService({
@@ -69,26 +69,17 @@ class SpiritualGuidanceService {
       verses: verses,
     );
 
-    // 5. Generate with Gemma; fall back to template if model unavailable
-    String guidance;
-    bool usedAi = false;
-    try {
-      final output = await _modelService.generateFromPrompt(prompt);
-      if (output.isNotEmpty) {
-        guidance = output;
-        usedAi = true;
-      } else {
-        guidance = _templateGuidance(primaryEmotion, verses);
-      }
-    } catch (_) {
-      guidance = _templateGuidance(primaryEmotion, verses);
+    // 5. Generate with Gemma only.
+    final guidance = await _modelService.generateFromPrompt(prompt);
+    if (guidance.trim().isEmpty) {
+      throw Exception('Gemma returned empty guidance output.');
     }
 
     return GuidanceResult(
       emotion: primaryEmotion,
       verses: verses,
-      guidance: guidance,
-      usedAiModel: usedAi,
+      guidance: guidance.trim(),
+      usedAiModel: true,
     );
   }
 
@@ -107,22 +98,6 @@ class SpiritualGuidanceService {
       }
     }
     return verses;
-  }
-
-  String _templateGuidance(String emotion, List<BibleVerse> verses) {
-    final scriptureLines = verses.isEmpty
-        ? ''
-        : verses
-            .map((v) => '"${v.text.trim()}"\n— ${v.reference}')
-            .join('\n\n');
-
-    return '''
-Based on your $emotion, God's Word offers these words of comfort:
-
-$scriptureLines
-
-Remember that God sees you and cares deeply about what you are going through. Bring your heart to Him in prayer, trusting that He hears every word.
-'''.trim();
   }
 }
 
