@@ -92,116 +92,129 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) async {
-        if (didPop) return;
-        final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) {
-          Navigator.of(context).pop();
+    return ValueListenableBuilder<bool>(
+      valueListenable: bibleDatasetInitInProgressNotifier,
+      builder: (_, bibleLoading, __) {
+        if (!localBibleService.isLoaded && bibleLoading) {
+          return const Scaffold(
+            body: SafeArea(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
         }
-      },
-      child: Scaffold(
-        body: Column(
-          children: [
-            ValueListenableBuilder<bool>(
-              valueListenable: aiModelReadyNotifier,
-              builder: (_, ready, __) {
-                if (ready) return const SizedBox.shrink();
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  color: const Color(0xFFF5EAD8),
-                  child: const Row(
-                    children: [
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+
+        return PopScope(
+          canPop: false,
+          onPopInvoked: (didPop) async {
+            if (didPop) return;
+            final shouldPop = await _onWillPop();
+            if (shouldPop && context.mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: Scaffold(
+            body: Column(
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: aiModelReadyNotifier,
+                  builder: (_, ready, __) {
+                    if (ready) return const SizedBox.shrink();
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        'AI initializing...',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF6B4226),
-                        ),
+                      color: const Color(0xFFF5EAD8),
+                      child: const Row(
+                        children: [
+                          SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'AI initializing...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6B4226),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      _TabNavigator(
+                        navigatorKey: _todayNavKey,
+                        builder: () => const TodayScreen(),
+                      ),
+                      _TabNavigator(
+                        navigatorKey: _bibleNavKey,
+                        builder: () => const TranslationSelectionScreen(),
+                      ),
+                      _TabNavigator(
+                        navigatorKey: _journalNavKey,
+                        builder: () => const JournalScreen(),
+                      ),
+                      _TabNavigator(
+                        navigatorKey: _kyrieNavKey,
+                        builder: () => const PanicScreen(),
+                      ),
+                      _TabNavigator(
+                        navigatorKey: _profileNavKey,
+                        builder: () => const SettingsScreen(),
                       ),
                     ],
                   ),
-                );
-              },
+                ),
+              ],
             ),
-            Expanded(
-              child: IndexedStack(
-                index: _currentIndex,
-                children: [
-                  _TabNavigator(
-                    navigatorKey: _todayNavKey,
-                    builder: () => const TodayScreen(),
-                  ),
-                  _TabNavigator(
-                    navigatorKey: _bibleNavKey,
-                    builder: () => const TranslationSelectionScreen(),
-                  ),
-                  _TabNavigator(
-                    navigatorKey: _journalNavKey,
-                    builder: () => const JournalScreen(),
-                  ),
-                  _TabNavigator(
-                    navigatorKey: _kyrieNavKey,
-                    builder: () => const PanicScreen(),
-                  ),
-                  _TabNavigator(
-                    navigatorKey: _profileNavKey,
-                    builder: () => const SettingsScreen(),
-                  ),
-                ],
-              ),
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (i) => setState(() => _currentIndex = i),
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: const Color(0xFFFDF8F0),
+              selectedItemColor: const Color(0xFF6B4226),
+              unselectedItemColor: Colors.brown.shade400,
+              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.menu_book_outlined),
+                  activeIcon: Icon(Icons.menu_book_rounded),
+                  label: 'Bible',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.edit_note_outlined),
+                  activeIcon: Icon(Icons.edit_note_rounded),
+                  label: 'Journal',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.volunteer_activism_outlined),
+                  activeIcon: Icon(Icons.volunteer_activism_rounded),
+                  label: 'Kyrie',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline_rounded),
+                  activeIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
             ),
-          ],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: const Color(0xFFFDF8F0),
-          selectedItemColor: const Color(0xFF6B4226),
-          unselectedItemColor: Colors.brown.shade400,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book_outlined),
-              activeIcon: Icon(Icons.menu_book_rounded),
-              label: 'Bible',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.edit_note_outlined),
-              activeIcon: Icon(Icons.edit_note_rounded),
-              label: 'Journal',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.volunteer_activism_outlined),
-              activeIcon: Icon(Icons.volunteer_activism_rounded),
-              label: 'Kyrie',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

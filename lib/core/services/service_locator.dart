@@ -33,8 +33,7 @@ import '../../features/kyrie/services/semantic_panic_search_service.dart';
 
 /// Global singleton service/repository instances used across the app.
 ///
-/// All `late final` values are set inside [main] before [runApp] is called,
-/// so they are safe to access from any widget or service.
+/// Service instances are created before [runApp] and warmed up in background.
 final bibleRepo = BibleRepository();
 final panicRepo = PanicResponseRepository();
 late final PanicDatasetService panicDatasetService;
@@ -70,6 +69,8 @@ late final ReminderService reminderService;
 // ── Local AI Step 9 ─────────────────────────────────────────────────────────
 late final GemmaModelService gemmaModelService;
 late final LocalBibleService localBibleService;
+final bibleDatasetReadyNotifier = ValueNotifier<bool>(false);
+final bibleDatasetInitInProgressNotifier = ValueNotifier<bool>(false);
 final aiModelReadyNotifier = ValueNotifier<bool>(false);
 final aiModelInitInProgressNotifier = ValueNotifier<bool>(false);
 

@@ -9,7 +9,6 @@ import 'ai/services/spiritual_guidance_service.dart';
 import 'ai/services/journal_reflection_service.dart';
 import 'core/services/service_locator.dart';
 import 'core/services/local_bible_service.dart';
-import 'data/repositories/bible_repository.dart';
 import 'data/datasources/favorites_service.dart';
 import 'data/datasources/panic_dataset_service.dart';
 import 'data/datasources/panic_search_service.dart';
@@ -37,6 +36,7 @@ import 'routes/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('App started');
 
   // Load environment variables from .env asset.
   try {
@@ -45,57 +45,13 @@ Future<void> main() async {
     debugPrint('dotenv load failed (continuing without env vars): $e');
   }
 
-  // Load core datasets with guarded startup.
-  try {
-    await Future.wait([
-      bibleRepo.init(),
-      panicRepo.init(),
-    ]);
-  } catch (e) {
-    debugPrint('Core dataset initialization failed: $e');
-    // Retry Bible load with explicit fallback chain to prevent boot crash.
-    for (final t in [
-      BibleRepository.defaultTranslation,
-      'NIV',
-      'KJV',
-      'AMP',
-    ]) {
-      try {
-        await bibleRepo.ensureLoaded(t);
-        break;
-      } catch (_) {
-        // Try next translation.
-      }
-    }
-    try {
-      await panicRepo.init();
-    } catch (inner) {
-      debugPrint('Panic dataset initialization failed: $inner');
-    }
-  }
-
-  // Wire up services that depend on repository data.
+  // Wire up service instances first so the UI can render immediately.
   panicDatasetService = PanicDatasetService();
-  try {
-    await panicDatasetService.init();
-  } catch (e) {
-    debugPrint('PanicDatasetService init failed: $e');
-  }
   panicSearchService = PanicSearchService(datasetService: panicDatasetService);
   favoritesService = FavoritesService();
-  try {
-    await favoritesService.init();
-  } catch (e) {
-    debugPrint('Favorites init failed: $e');
-  }
 
   // Journal services.
   final journalStorage = JournalStorageService();
-  try {
-    await journalStorage.init();
-  } catch (e) {
-    debugPrint('Journal storage init failed: $e');
-  }
   journalRepo = JournalRepository(storage: journalStorage);
   emotionDetectionService = EmotionDetectionService();
   prayerGeneratorService = PrayerGeneratorService();
@@ -103,63 +59,27 @@ Future<void> main() async {
   // Bible Step 6 services.
   bibleSearchService = BibleSearchService(repository: bibleRepo);
   final bookmarkStorage = BookmarkService();
-  try {
-    await bookmarkStorage.init();
-  } catch (e) {
-    debugPrint('Bookmark init failed: $e');
-  }
   bookmarkService = bookmarkStorage;
   final highlightStorage = HighlightService();
-  try {
-    await highlightStorage.init();
-  } catch (e) {
-    debugPrint('Highlight init failed: $e');
-  }
   highlightService = highlightStorage;
 
   // Home Step 7 services.
   readingProgressService = ReadingProgressService();
   readingPlanService = ReadingPlanService(repository: bibleRepo);
-  try {
-    await readingPlanService.init();
-  } catch (e) {
-    debugPrint('ReadingPlanService init failed: $e');
-  }
   streakService = StreakService();
-  try {
-    await streakService.updateStreak();
-  } catch (e) {
-    debugPrint('Streak update failed: $e');
-  }
   reminderService = ReminderService();
-  try {
-    await reminderService.init(
-      onOpenToday: () => tabSwitchRequest.value = 0,
-    );
-    await reminderService.rescheduleAll();
-  } catch (e) {
-    debugPrint('Reminder service init failed: $e');
-  }
 
   // Local AI (Gemma) service.
   gemmaModelService = GemmaModelService();
   localBibleService = LocalBibleService(repository: bibleRepo);
-  try {
-    await localBibleService.loadBible();
-  } catch (e) {
-    debugPrint('LocalBibleService init failed: $e');
-  }
+  bibleDatasetReadyNotifier.value = false;
+  bibleDatasetInitInProgressNotifier.value = false;
   aiModelReadyNotifier.value = false;
   aiModelInitInProgressNotifier.value = false;
 
   // RAG pipeline services (offline local Bible + guidance + journal AI).
   // Shared emotion → verse map (loaded once, injected into both RAG services).
   emotionVersesRepository = EmotionVersesRepository();
-  try {
-    await emotionVersesRepository.init();
-  } catch (e) {
-    debugPrint('EmotionVersesRepository init failed: $e');
-  }
 
   // verseSuggestionService is wired here after LocalBibleService is ready so
   // all verse lookups come from the bundled NLT dataset.
@@ -191,38 +111,9 @@ Future<void> main() async {
 
   // Settings Step 8 services.
   settingsService = SettingsService();
-  try {
-    await settingsService.init();
-  } catch (e) {
-    debugPrint('Settings init failed: $e');
-  }
   accessibilityService = AccessibilityService();
-  try {
-    await accessibilityService.init();
-  } catch (e) {
-    debugPrint('Accessibility init failed: $e');
-  }
   dataExportService = DataExportService();
   bibleCacheService = BibleCacheService(repository: bibleRepo);
-
-  // Ensure preferred translation is ready for quick Bible access.
-  try {
-    await bibleRepo.ensureLoaded(settingsService.preferredTranslation);
-  } catch (e) {
-    debugPrint('Preferred translation load failed: $e');
-    try {
-      await bibleRepo.ensureLoaded(BibleRepository.defaultTranslation);
-    } catch (_) {
-      // Continue boot with whichever translation is already loaded.
-    }
-  }
-
-  // Keep plan selection synchronized with settings.
-  try {
-    await readingPlanService.selectPlan(settingsService.selectedReadingPlan);
-  } catch (e) {
-    debugPrint('Reading plan sync failed: $e');
-  }
 
   // Panic Step 5 services.
   panicGuidanceService = PanicGuidanceService(
@@ -234,25 +125,123 @@ Future<void> main() async {
   semanticPanicSearchService =
       SemanticPanicSearchService(repository: panicRepo);
   final panicHistory = PanicHistoryService();
+  panicHistoryService = panicHistory;
+
+  runApp(const BibleApp());
+
+  Future.microtask(_warmStartServices);
+}
+
+Future<void> _warmStartServices() async {
+  // Core datasets
   try {
-    await panicHistory.init();
+    await panicRepo.init();
+  } catch (e) {
+    debugPrint('Panic dataset initialization failed: $e');
+  }
+
+  // Persisted/local services
+  try {
+    await panicDatasetService.init();
+  } catch (e) {
+    debugPrint('PanicDatasetService init failed: $e');
+  }
+  try {
+    await favoritesService.init();
+  } catch (e) {
+    debugPrint('Favorites init failed: $e');
+  }
+  try {
+    await journalRepo.storage.init();
+  } catch (e) {
+    debugPrint('Journal storage init failed: $e');
+  }
+  try {
+    await bookmarkService.init();
+  } catch (e) {
+    debugPrint('Bookmark init failed: $e');
+  }
+  try {
+    await highlightService.init();
+  } catch (e) {
+    debugPrint('Highlight init failed: $e');
+  }
+  try {
+    await readingPlanService.init();
+  } catch (e) {
+    debugPrint('ReadingPlanService init failed: $e');
+  }
+  try {
+    await streakService.updateStreak();
+  } catch (e) {
+    debugPrint('Streak update failed: $e');
+  }
+  try {
+    await reminderService.init(
+      onOpenToday: () => tabSwitchRequest.value = 0,
+    );
+    await reminderService.rescheduleAll();
+  } catch (e) {
+    debugPrint('Reminder service init failed: $e');
+  }
+  try {
+    await settingsService.init();
+  } catch (e) {
+    debugPrint('Settings init failed: $e');
+  }
+  try {
+    await accessibilityService.init();
+  } catch (e) {
+    debugPrint('Accessibility init failed: $e');
+  }
+  try {
+    await emotionVersesRepository.init();
+  } catch (e) {
+    debugPrint('EmotionVersesRepository init failed: $e');
+  }
+  try {
+    await panicHistoryService.init();
   } catch (e) {
     debugPrint('Panic history init failed: $e');
   }
-  panicHistoryService = panicHistory;
 
-  debugPrint(
-    'Bible loaded — ${bibleRepo.allBookNames.length} books (${BibleRepository.defaultTranslation})',
-  );
-  debugPrint('Panic dataset — ${panicRepo.count} entries');
-  debugPrint('Favorites restored — ${favoritesService.count} saved');
-  debugPrint('Bookmarks restored — ${bookmarkService.getBookmarks().length}');
-  debugPrint('Highlights restored — ${highlightService.getHighlights().length}');
-  debugPrint('Reading streak — ${streakService.getCurrentStreak()} days');
-  debugPrint('Journal entries — ${journalRepo.count} entries');
-  debugPrint('Panic history — ${panicHistoryService.count} sessions');
+  // Bible dataset in safe background load.
+  bibleDatasetInitInProgressNotifier.value = true;
+  debugPrint('Loading Bible dataset...');
+  await localBibleService.loadBible();
+  bibleDatasetReadyNotifier.value = localBibleService.isLoaded;
+  bibleDatasetInitInProgressNotifier.value = false;
+  debugPrint(localBibleService.isLoaded
+      ? 'Bible dataset loaded'
+      : 'Bible dataset failed, using fallback verse');
 
-  runApp(const BibleApp());
+  // Sync plan after settings are loaded.
+  try {
+    await readingPlanService.selectPlan(settingsService.selectedReadingPlan);
+  } catch (e) {
+    debugPrint('Reading plan sync failed: $e');
+  }
+
+  // Keep preferred translation loaded for reader screens.
+  try {
+    await bibleRepo.ensureLoaded(settingsService.preferredTranslation);
+  } catch (e) {
+    debugPrint('Preferred translation load failed: $e');
+  }
+
+  // Heavy model init in background.
+  aiModelInitInProgressNotifier.value = true;
+  debugPrint('Initializing Gemma...');
+  try {
+    await gemmaModelService.initializeModel();
+    aiModelReadyNotifier.value = gemmaModelService.isInitialized;
+    debugPrint('Gemma ready');
+  } catch (e) {
+    aiModelReadyNotifier.value = false;
+    debugPrint('Gemma initialization failed: $e');
+  } finally {
+    aiModelInitInProgressNotifier.value = false;
+  }
 }
 
 class BibleApp extends StatelessWidget {

@@ -38,16 +38,25 @@ class _TodayScreenState extends State<TodayScreen> {
   void initState() {
     super.initState();
     journalRefreshNotifier.addListener(_onRefresh);
+    bibleDatasetReadyNotifier.addListener(_onBibleDatasetReady);
     _loadTodayData();
   }
 
   @override
   void dispose() {
     journalRefreshNotifier.removeListener(_onRefresh);
+    bibleDatasetReadyNotifier.removeListener(_onBibleDatasetReady);
     super.dispose();
   }
 
   void _onRefresh() => _loadTodayData();
+
+  void _onBibleDatasetReady() {
+    if (!mounted) return;
+    if (bibleDatasetReadyNotifier.value) {
+      _loadTodayData();
+    }
+  }
 
   static const VerseOfDay _defaultEncouragementVerse = VerseOfDay(
     reference: 'Psalm 46:10',
