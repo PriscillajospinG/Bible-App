@@ -52,11 +52,7 @@ class _TodayScreenState extends State<TodayScreen> {
   Future<void> _loadTodayData() async {
     final latestEntry = journalRepo.getLatestEntry();
     final latestKyrie = panicHistoryService.getLatestEntry();
-    final emotions = latestEntry != null && latestEntry.detectedEmotions.isNotEmpty
-        ? latestEntry.detectedEmotions
-        : ['peace'];
-
-    final verse = await verseOfDayService.getVerseForToday(emotions);
+    final verse = await verseOfDayService.getVerseOfTheDay();
     final prayers = await prayerPointService.getPrayerPointsForToday(
       latestJournal: latestEntry,
       latestKyrie: latestKyrie,

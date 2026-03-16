@@ -37,7 +37,7 @@ class EmotionVersesRepository {
   List<String> versesFor(String emotion) =>
       _data[emotion] ??
       _data['peace'] ??
-      const ['Psalm 46:10'];
+      const ['John 14:27'];
 
   bool get isLoaded => _loaded;
 }

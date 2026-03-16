@@ -187,7 +187,7 @@ Future<void> main() async {
     bibleApi: bibleApiService,
   );
   verseOfDayService = VerseOfDayService(
-    verseSuggestionService: verseSuggestionService,
+    bibleApi: bibleApiService,
   );
   prayerPointService = PrayerPointService(
     emotionDetection: emotionDetectionService,
