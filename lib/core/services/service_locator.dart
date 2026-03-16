@@ -71,6 +71,8 @@ late final ReminderService reminderService;
 
 // ── Local AI Step 9 ─────────────────────────────────────────────────────────
 late final GemmaModelService gemmaModelService;
+final aiModelReadyNotifier = ValueNotifier<bool>(false);
+final aiModelInitInProgressNotifier = ValueNotifier<bool>(false);
 
 // ── RAG Pipeline ─────────────────────────────────────────────────────────────
 late final EmotionVersesRepository emotionVersesRepository;

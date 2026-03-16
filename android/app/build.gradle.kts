@@ -34,13 +34,18 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += listOf("-std=c++17")
-                arguments += listOf("-DANDROID_STL=c++_shared")
+                arguments += listOf(
+                    "-DANDROID_STL=c++_shared",
+                    "-DANDROID_ABI=arm64-v8a"
+                )
             }
         }
 
         ndk {
+            abiFilters.clear()
             abiFilters += listOf("arm64-v8a")
         }
+
     }
 
     externalNativeBuild {
@@ -62,6 +67,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
 }
 
 dependencies {

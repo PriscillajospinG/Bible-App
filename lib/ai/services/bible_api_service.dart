@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -11,8 +12,8 @@ import 'verse_cache_service.dart';
 /// Fetches Bible verse passages from the api.bible REST API.
 ///
 /// The API key is loaded at runtime from the .env asset (BIBLE_API_KEY).
-/// On any network failure the optional [FallbackBibleService] is queried first;
-/// only when that also fails is an exception propagated.
+  /// On any network failure the optional [FallbackBibleService] is queried first;
+  /// if that also fails, a built-in fallback verse is returned.
 ///
 /// Built-in caching: if [cache] is provided, verse results are persisted via
 /// [VerseCacheService] (SharedPreferences) so repeat lookups skip the network.
@@ -30,6 +31,18 @@ class BibleApiService {
   static const _bibleId = '9879dbb7cfe39e4d-01';
   static const _baseUrl = 'https://api.scripture.api.bible/v1';
   static const _timeout = Duration(seconds: 10);
+
+    static const Map<String, String> _builtInFallbackVerses = {
+    'Psalm 46:10': 'Be still, and know that I am God.',
+    'Joshua 1:9':
+      'Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest.',
+    'Proverbs 3:5':
+      'Trust in the LORD with all thine heart; and lean not unto thine own understanding.',
+    'Romans 8:28':
+      'And we know that all things work together for good to them that love God, to them who are the called according to his purpose.',
+    'Philippians 4:6':
+      'Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.',
+    };
 
   /// API key resolved from the .env asset at runtime.
   String get _apiKey {
@@ -60,8 +73,8 @@ class BibleApiService {
   Future<BibleVerse> fetchPassage(String reference) async {
     final passageId = _referenceToPassageId(reference);
     if (passageId == null) {
-      // Try fallback for unparseable references before giving up.
-      return _fallbackOrThrow(reference, 'Cannot parse Bible reference: "$reference"');
+      // Try fallback for unparseable references.
+      return _fallbackOrDefault(reference, 'Cannot parse Bible reference: "$reference"');
     }
 
     final uri = Uri.parse(
@@ -76,7 +89,7 @@ class BibleApiService {
 
     if (_apiKey.isEmpty) {
       debugPrint('BibleApiService: BIBLE_API_KEY is empty; using fallback for "$reference"');
-      return _fallbackOrThrow(reference, 'Bible API key missing');
+      return _fallbackOrDefault(reference, 'Bible API key missing');
     }
 
     http.Response response;
@@ -94,14 +107,14 @@ class BibleApiService {
           .timeout(_timeout);
     } catch (e) {
       debugPrint('BibleApiService: request failed for "$reference": $e');
-      return _fallbackOrThrow(reference, 'Bible API network error');
+      return _fallbackOrDefault(reference, 'Bible API network error');
     }
 
     if (response.statusCode != 200) {
       debugPrint(
         'BibleApiService: HTTP ${response.statusCode} for "$reference"; falling back to local dataset',
       );
-      return _fallbackOrThrow(
+      return _fallbackOrDefault(
         reference,
         'Bible API ${response.statusCode}',
       );
@@ -116,8 +129,8 @@ class BibleApiService {
     return BibleVerse.fromApiPassage(reference: resolvedRef, text: content);
   }
 
-  /// Queries [FallbackBibleService] if available; otherwise throws [reason].
-  BibleVerse _fallbackOrThrow(String reference, String reason) {
+  /// Queries [FallbackBibleService] first, then a built-in fallback list.
+  BibleVerse _fallbackOrDefault(String reference, String reason) {
     if (_fallback != null) {
       final local = _fallback!.lookup(reference);
       if (local != null) {
@@ -125,7 +138,20 @@ class BibleApiService {
         return local;
       }
     }
-    throw Exception(reason);
+
+    debugPrint('BibleApiService: local fallback missing for "$reference" ($reason). Returning built-in fallback verse.');
+    final fallback = _pickBuiltInFallback();
+    return BibleVerse.fromApiPassage(
+      reference: fallback.key,
+      text: fallback.value,
+    );
+  }
+
+  MapEntry<String, String> _pickBuiltInFallback() {
+    final entries = _builtInFallbackVerses.entries.toList(growable: false);
+    final index = Random().nextInt(entries.length);
+    final chosen = entries[index];
+    return MapEntry(chosen.key, chosen.value);
   }
 
   /// Converts a human-readable reference to an api.bible passage ID.

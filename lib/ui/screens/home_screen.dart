@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     tabSwitchRequest.addListener(_onTabSwitchRequest);
+    _loadModelAsync();
   }
 
   @override
@@ -52,6 +53,23 @@ class _HomeScreenState extends State<HomeScreen> {
     if (tab != null) {
       setState(() => _currentIndex = tab);
       tabSwitchRequest.value = null;
+    }
+  }
+
+  Future<void> _loadModelAsync() async {
+    if (aiModelReadyNotifier.value || aiModelInitInProgressNotifier.value) {
+      return;
+    }
+
+    aiModelInitInProgressNotifier.value = true;
+    try {
+      await gemmaModelService.initializeModel();
+      aiModelReadyNotifier.value = gemmaModelService.isInitialized;
+    } catch (e) {
+      aiModelReadyNotifier.value = false;
+      debugPrint('Gemma background initialization failed: $e');
+    } finally {
+      aiModelInitInProgressNotifier.value = false;
     }
   }
 
@@ -84,28 +102,66 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
+        body: Column(
           children: [
-            _TabNavigator(
-              navigatorKey: _todayNavKey,
-              builder: () => const TodayScreen(),
+            ValueListenableBuilder<bool>(
+              valueListenable: aiModelReadyNotifier,
+              builder: (_, ready, __) {
+                if (ready) return const SizedBox.shrink();
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  color: const Color(0xFFF5EAD8),
+                  child: const Row(
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'AI initializing...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B4226),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-            _TabNavigator(
-              navigatorKey: _bibleNavKey,
-              builder: () => const TranslationSelectionScreen(),
-            ),
-            _TabNavigator(
-              navigatorKey: _journalNavKey,
-              builder: () => const JournalScreen(),
-            ),
-            _TabNavigator(
-              navigatorKey: _kyrieNavKey,
-              builder: () => const PanicScreen(),
-            ),
-            _TabNavigator(
-              navigatorKey: _profileNavKey,
-              builder: () => const SettingsScreen(),
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: [
+                  _TabNavigator(
+                    navigatorKey: _todayNavKey,
+                    builder: () => const TodayScreen(),
+                  ),
+                  _TabNavigator(
+                    navigatorKey: _bibleNavKey,
+                    builder: () => const TranslationSelectionScreen(),
+                  ),
+                  _TabNavigator(
+                    navigatorKey: _journalNavKey,
+                    builder: () => const JournalScreen(),
+                  ),
+                  _TabNavigator(
+                    navigatorKey: _kyrieNavKey,
+                    builder: () => const PanicScreen(),
+                  ),
+                  _TabNavigator(
+                    navigatorKey: _profileNavKey,
+                    builder: () => const SettingsScreen(),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

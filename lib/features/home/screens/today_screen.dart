@@ -49,35 +49,55 @@ class _TodayScreenState extends State<TodayScreen> {
 
   void _onRefresh() => _loadTodayData();
 
+  static const VerseOfDay _defaultEncouragementVerse = VerseOfDay(
+    reference: 'Psalm 46:10',
+    text: 'Be still, and know that I am God.',
+    emotion: 'daily',
+  );
+
   Future<void> _loadTodayData() async {
-    final latestEntry = journalRepo.getLatestEntry();
-    final latestKyrie = panicHistoryService.getLatestEntry();
-    final verse = await verseOfDayService.getVerseOfTheDay();
-    final prayers = await prayerPointService.getPrayerPointsForToday(
-      latestJournal: latestEntry,
-      latestKyrie: latestKyrie,
-    );
+    try {
+      final latestEntry = journalRepo.getLatestEntry();
+      final latestKyrie = panicHistoryService.getLatestEntry();
+      final verse = await verseOfDayService.getVerseOfTheDay();
+      final prayers = await prayerPointService.getPrayerPointsForToday(
+        latestJournal: latestEntry,
+        latestKyrie: latestKyrie,
+      );
 
-    final position = await readingProgressService.getLastReadingPosition();
-    final progress = await readingPlanService.getProgress();
-    final assignment = await readingPlanService.getTodayAssignment();
-    final reminderSettings = await reminderService.loadSettings();
+      final position = await readingProgressService.getLastReadingPosition();
+      final progress = await readingPlanService.getProgress();
+      final assignment = await readingPlanService.getTodayAssignment();
+      final reminderSettings = await reminderService.loadSettings();
 
-    if (!mounted) return;
-    setState(() {
-      _verse = verse;
-      _prayers = prayers;
-      _readingPosition = position;
-      _planProgress = progress;
-      _todayAssignment = assignment;
-      _activePlan = readingPlanService.getPlanByName(progress.planName);
-      _streak = streakService.getCurrentStreak();
-      _bibleReminderTime = reminderSettings.bibleReadingTime;
-      _bibleReminderEnabled = reminderSettings.bibleReadingEnabled;
-      _prayerReminderTime = reminderSettings.prayerTime;
-      _prayerReminderEnabled = reminderSettings.prayerEnabled;
-      _isLoading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _verse = verse;
+        _prayers = prayers;
+        _readingPosition = position;
+        _planProgress = progress;
+        _todayAssignment = assignment;
+        _activePlan = readingPlanService.getPlanByName(progress.planName);
+        _streak = streakService.getCurrentStreak();
+        _bibleReminderTime = reminderSettings.bibleReadingTime;
+        _bibleReminderEnabled = reminderSettings.bibleReadingEnabled;
+        _prayerReminderTime = reminderSettings.prayerTime;
+        _prayerReminderEnabled = reminderSettings.prayerEnabled;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('TodayScreen: verse loading failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _verse = _defaultEncouragementVerse;
+        _prayers = const [
+          'Pause and breathe. God is with you in this moment.',
+          'Ask God for wisdom and peace for what lies ahead.',
+          'Thank Him for His faithfulness today.',
+        ];
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _openContinueReading() async {

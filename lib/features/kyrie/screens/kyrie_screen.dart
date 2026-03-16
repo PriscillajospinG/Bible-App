@@ -94,8 +94,9 @@ class _PanicScreenState extends State<PanicScreen> {
         );
       }
     } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '').trim();
       setState(() {
-        _error = 'Something went wrong. Please try again.';
+        _error = msg.isEmpty ? 'Something went wrong. Please try again.' : msg;
         _isLoading = false;
       });
     }

@@ -23,6 +23,7 @@ static std::mutex g_mutex;
 #if HAVE_LLAMA_CPP
 static llama_model* g_model = nullptr;
 static llama_context* g_ctx = nullptr;
+static const llama_vocab* g_vocab = nullptr;
 
 static constexpr int kMaxNewTokens = 512;
 static constexpr float kTemperature = 0.7f;
@@ -52,7 +53,7 @@ extern "C" int32_t initialize_model(const char* model_path,
   llama_backend_init();
 
   llama_model_params mparams = llama_model_default_params();
-  g_model = llama_load_model_from_file(model_path, mparams);
+  g_model = llama_model_load_from_file(model_path, mparams);
   if (g_model == nullptr) {
     LOGE("Failed to load model file: %s", model_path == nullptr ? "<null>" : model_path);
     return 0;
@@ -64,10 +65,20 @@ extern "C" int32_t initialize_model(const char* model_path,
   cparams.n_threads = threads;
   cparams.n_threads_batch = threads;
 
-  g_ctx = llama_new_context_with_model(g_model, cparams);
+  g_ctx = llama_init_from_model(g_model, cparams);
   if (g_ctx == nullptr) {
     LOGE("Failed to create llama context");
-    llama_free_model(g_model);
+    llama_model_free(g_model);
+    g_model = nullptr;
+    return 0;
+  }
+
+  g_vocab = llama_model_get_vocab(g_model);
+  if (g_vocab == nullptr) {
+    LOGE("Failed to resolve model vocabulary");
+    llama_free(g_ctx);
+    g_ctx = nullptr;
+    llama_model_free(g_model);
     g_model = nullptr;
     return 0;
   }
@@ -88,16 +99,16 @@ extern "C" const char* generate_response(const char* prompt) {
   std::lock_guard<std::mutex> lock(g_mutex);
 
 #if HAVE_LLAMA_CPP
-  if (g_model == nullptr || g_ctx == nullptr || prompt == nullptr) {
+  if (g_model == nullptr || g_ctx == nullptr || g_vocab == nullptr || prompt == nullptr) {
     LOGE("generate_response called before model initialization");
     return heap_string("[Error] Model not initialised.");
   }
 
-  const bool add_bos = llama_should_add_bos_token(g_model);
+    const bool add_bos = llama_vocab_get_add_bos(g_vocab);
   const bool parse_special = true;
 
   int n_prompt_tokens = -llama_tokenize(
-      g_model,
+      g_vocab,
       prompt,
       static_cast<int32_t>(strlen(prompt)),
       nullptr,
@@ -114,7 +125,7 @@ extern "C" const char* generate_response(const char* prompt) {
 
   std::vector<llama_token> prompt_tokens(n_prompt_tokens);
   llama_tokenize(
-      g_model,
+      g_vocab,
       prompt,
       static_cast<int32_t>(strlen(prompt)),
       prompt_tokens.data(),
@@ -122,7 +133,7 @@ extern "C" const char* generate_response(const char* prompt) {
       add_bos,
       parse_special);
 
-  llama_kv_cache_clear(g_ctx);
+  llama_memory_clear(llama_get_memory(g_ctx), true);
 
   if (n_prompt_tokens > 1) {
     llama_batch batch = llama_batch_get_one(prompt_tokens.data(), n_prompt_tokens - 1);
@@ -155,16 +166,16 @@ extern "C" const char* generate_response(const char* prompt) {
     if (llama_decode(g_ctx, step) != 0) break;
 
     cur_token = llama_sampler_sample(sampler, g_ctx, -1);
-    if (llama_token_is_eog(g_model, cur_token)) break;
+    if (llama_vocab_is_eog(g_vocab, cur_token)) break;
 
     char piece_buf[256];
     int piece_len = llama_token_to_piece(
-        g_model,
+      g_vocab,
         cur_token,
         piece_buf,
         sizeof(piece_buf),
-        false,
-        false);
+      0,
+      false);
 
     if (piece_len > 0) {
       output.append(piece_buf, static_cast<size_t>(piece_len));
@@ -198,9 +209,10 @@ extern "C" void release_model() {
     g_ctx = nullptr;
   }
   if (g_model != nullptr) {
-    llama_free_model(g_model);
+    llama_model_free(g_model);
     g_model = nullptr;
   }
+  g_vocab = nullptr;
   llama_backend_free();
 #endif
 }

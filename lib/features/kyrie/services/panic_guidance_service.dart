@@ -45,6 +45,10 @@ class PanicGuidanceService {
   final BibleApiService? _bibleApi;
 
   Future<PanicGuidanceResult> handleUserMessage(String message) async {
+    if (!_modelService.isInitialized) {
+      throw Exception('AI is still initializing. Please try again in a moment.');
+    }
+
     final detectedEmotions = _emotionDetection.detectEmotions(message);
     final primaryEmotion = detectedEmotions.first;
 

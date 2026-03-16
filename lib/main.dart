@@ -145,8 +145,8 @@ Future<void> main() async {
 
   // Local AI (Gemma) service.
   gemmaModelService = GemmaModelService();
-  await gemmaModelService.initialize();
-  debugPrint('Gemma model initialized successfully');
+  aiModelReadyNotifier.value = false;
+  aiModelInitInProgressNotifier.value = false;
 
   // RAG pipeline services (Bible API + verse cache + guidance + journal AI).
   // Shared emotion → verse map (loaded once, injected into both RAG services).

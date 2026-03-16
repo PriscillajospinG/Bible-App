@@ -10,8 +10,8 @@ import '../inference/gemma_ffi.dart';
 import '../prompt_builders/gemma_prompt_builder.dart';
 
 class GemmaModelService {
-  static const _assetModelPath = 'assets/models/gemma-2b-it.Q4_K_M.gguf';
-  static const _targetFileName = 'gemma-2b-it.Q4_K_M.gguf';
+  static const _assetModelPath = 'assets/models/gemma-270m.gguf';
+  static const _targetFileName = 'gemma-270m.gguf';
 
   bool _initialized = false;
   String? _modelFilePath;
@@ -25,24 +25,30 @@ class GemmaModelService {
 
     debugPrint('Loading Gemma model...');
     final modelPath = await _copyModelIfNeeded();
+    if (modelPath == null) {
+      debugPrint('Gemma model unavailable. AI features will be disabled until model is packaged.');
+      return;
+    }
     final threads = Platform.numberOfProcessors.clamp(2, 8);
 
-    final ok = GemmaFfi.instance.initializeModel(
-      modelPath: modelPath,
-      threads: threads,
-      contextSize: 2048,
-      batchSize: 512,
+    debugPrint('Initializing llama.cpp context...');
+    final ok = await Isolate.run(
+      () => GemmaFfi.instance.initializeModel(
+        modelPath: modelPath,
+        threads: threads,
+        contextSize: 2048,
+        batchSize: 512,
+      ),
     );
 
     if (!ok) {
-      throw StateError(
-        'Gemma model initialization failed. Ensure GGUF model exists and native llama.cpp is linked.',
-      );
+      debugPrint('Gemma model initialization failed. Ensure GGUF model exists and native llama.cpp is linked.');
+      return;
     }
 
     _modelFilePath = modelPath;
     _initialized = true;
-    debugPrint('Gemma model initialized');
+    debugPrint('Gemma model initialized successfully');
   }
 
   Future<String> rewriteStructuredResponse({
@@ -68,7 +74,7 @@ class GemmaModelService {
     debugPrint('Prompt length: ${prompt.length}');
 
     if (!_initialized) {
-      throw Exception('Gemma model not initialized.');
+      throw Exception('AI is still initializing. Please try again in a moment.');
     }
 
     debugPrint('Generating tokens...');
@@ -94,27 +100,36 @@ class GemmaModelService {
 
   String get modelPathOrEmpty => _modelFilePath ?? '';
 
-  Future<String> _copyModelIfNeeded() async {
-    final dir = await getApplicationSupportDirectory();
-    final modelDir = Directory('${dir.path}/models');
-    if (!await modelDir.exists()) {
-      await modelDir.create(recursive: true);
-    }
+  Future<String?> _copyModelIfNeeded() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final modelPath = '${dir.path}/$_targetFileName';
+    final outFile = File(modelPath);
 
-    final outFile = File('${modelDir.path}/$_targetFileName');
-    if (await outFile.exists() && await outFile.length() > 1024) {
+    if (outFile.existsSync() && await outFile.length() > 1024) {
       return outFile.path;
     }
 
+    debugPrint('Copying model to device storage...');
     try {
       final bytes = await rootBundle.load(_assetModelPath);
-      await outFile.writeAsBytes(
-        bytes.buffer.asUint8List(),
-        flush: true,
+      final modelBytes = bytes.buffer.asUint8List();
+      await Isolate.run(
+        () => _writeModelBytes(modelPath, modelBytes),
       );
-      return outFile.path;
     } catch (e) {
-      throw Exception('Gemma model file missing. AI system cannot start.');
+      debugPrint('Gemma model missing in Flutter assets at $_assetModelPath: $e');
+      return null;
     }
+
+    if (!outFile.existsSync()) {
+      debugPrint('Gemma model missing at $modelPath');
+      return null;
+    }
+
+    return outFile.path;
+  }
+
+  static void _writeModelBytes(String modelPath, Uint8List bytes) {
+    File(modelPath).writeAsBytesSync(bytes, flush: true);
   }
 }
