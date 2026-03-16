@@ -47,7 +47,7 @@ class BibleApiService {
   /// API key resolved from the .env asset at runtime.
   String get _apiKey {
     try {
-      return dotenv.maybeGet('BIBLE_API_KEY') ?? '';
+      return (dotenv.env['BIBLE_API_KEY'] ?? '').trim();
     } catch (_) {
       return '';
     }
@@ -94,12 +94,11 @@ class BibleApiService {
 
     http.Response response;
     try {
+      debugPrint('Bible API key loaded: ${_apiKey.isNotEmpty}');
       response = await http
           .get(
             uri,
             headers: {
-              // Keep both header forms for compatibility across API gateways.
-              'Authorization': 'api-key $_apiKey',
               'api-key': _apiKey,
               'Content-Type': 'application/json',
             },
@@ -111,6 +110,9 @@ class BibleApiService {
     }
 
     if (response.statusCode != 200) {
+      if (response.statusCode == 401) {
+        debugPrint('BibleApiService: HTTP 401 unauthorized. Check BIBLE_API_KEY in .env');
+      }
       debugPrint(
         'BibleApiService: HTTP ${response.statusCode} for "$reference"; falling back to local dataset',
       );

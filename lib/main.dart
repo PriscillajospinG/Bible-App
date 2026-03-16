@@ -42,7 +42,7 @@ Future<void> main() async {
 
   // Load environment variables from .env asset.
   try {
-    await dotenv.load(fileName: '.env');
+    await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint('dotenv load failed (continuing without env vars): $e');
   }
