@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../data/models/bible_verse.dart';
+import '../../data/models/bible_verse.dart';
 
 /// Local cache for API-fetched Bible passages.
 ///

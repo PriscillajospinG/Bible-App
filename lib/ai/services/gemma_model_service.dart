@@ -5,9 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../data/models/panic_response.dart';
-import 'gemma_engine.dart';
-import 'gemma_prompt_builder.dart';
+import '../../data/models/panic_response.dart';
+import '../inference/gemma_engine.dart';
+import '../prompt_builders/gemma_prompt_builder.dart';
 
 class GemmaModelService {
   static const _assetModelPath = 'assets/models/gemma-270m.gguf';

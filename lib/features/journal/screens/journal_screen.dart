@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../ai/journal_reflection_service.dart';
-import '../../../core/service_locator.dart';
+import '../../../ai/services/journal_reflection_service.dart';
+import '../../../core/services/service_locator.dart';
 import '../models/journal_entry.dart';
 import '../widgets/journal_entry_card.dart';
 import '../widgets/journal_input_field.dart';

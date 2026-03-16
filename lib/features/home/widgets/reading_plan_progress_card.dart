@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/reading_plan_service.dart';
+import '../../reading_plan/services/reading_plan_service.dart';
 
 class ReadingPlanProgressCard extends StatelessWidget {
   const ReadingPlanProgressCard({

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../core/service_locator.dart';
+import '../../core/services/service_locator.dart';
 import '../../features/bible/screens/translation_selection_screen.dart';
 import '../../features/home/screens/today_screen.dart';
 import '../../features/journal/screens/journal_screen.dart';
-import '../../features/panic/panic_screen.dart';
-import '../../features/settings/settings_screen.dart';
+import '../../features/kyrie/screens/kyrie_screen.dart';
+import '../../features/settings/screens/settings_screen.dart';
 
 /// Root shell of the app.
 ///

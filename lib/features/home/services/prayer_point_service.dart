@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../ai/emotion_detection_service.dart';
-import '../../../ai/gemma_model_service.dart';
+import '../../../ai/services/emotion_detection_service.dart';
+import '../../../ai/services/gemma_model_service.dart';
 import '../../journal/models/journal_entry.dart';
 import '../../journal/services/prayer_generator_service.dart';
 import '../../journal/services/verse_suggestion_service.dart';
-import '../../panic/services/panic_history_service.dart';
+import '../../kyrie/services/panic_history_service.dart';
 
 /// Generates daily prayer points from journal + Kyrie context.
 ///

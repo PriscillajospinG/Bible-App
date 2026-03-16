@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/service_locator.dart';
+import '../../../core/services/service_locator.dart';
 import 'book_list_screen.dart';
 
 /// Shows Old Testament and New Testament as tappable cards.

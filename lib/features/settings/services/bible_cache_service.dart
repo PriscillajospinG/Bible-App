@@ -1,5 +1,5 @@
-import '../../data/models/bible_verse.dart';
-import '../../data/repositories/bible_repository.dart';
+import '../../../data/models/bible_verse.dart';
+import '../../../data/repositories/bible_repository.dart';
 
 /// Lightweight chapter-level cache to avoid repeated verse list rebuilds.
 class BibleCacheService {

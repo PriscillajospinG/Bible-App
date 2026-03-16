@@ -1,11 +1,11 @@
-import '../../../ai/bible_api_service.dart';
-import '../../../ai/emotion_detection_service.dart';
-import '../../../ai/gemma_model_service.dart';
-import '../../../ai/gemma_prompt_builder.dart';
+import '../../../ai/services/bible_api_service.dart';
+import '../../../ai/services/emotion_detection_service.dart';
+import '../../../ai/services/gemma_model_service.dart';
+import '../../../ai/prompt_builders/gemma_prompt_builder.dart';
 import 'package:flutter/foundation.dart';
 import '../../../data/models/bible_verse.dart';
 import '../../../data/models/panic_entry.dart';
-import '../../../data/services/panic_search_service.dart';
+import '../../../data/datasources/panic_search_service.dart';
 
 class PanicGuidanceResult {
   final String emotion;

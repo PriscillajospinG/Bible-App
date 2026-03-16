@@ -1,5 +1,5 @@
 import '../models/panic_response.dart';
-import '../services/panic_dataset_loader.dart';
+import '../datasources/panic_dataset_loader.dart';
 
 /// In-memory repository for the spiritual-guidance panic-response dataset.
 ///

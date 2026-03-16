@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/service_locator.dart';
+import '../../../core/services/service_locator.dart';
 import '../models/verse_of_day.dart';
 import '../widgets/prayer_point_list.dart';
 import '../widgets/verse_of_day_card.dart';

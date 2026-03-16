@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import '../data/models/bible_verse.dart';
+import '../../data/models/bible_verse.dart';
 
 /// Serves Bible verses from the bundled KJV flat-lookup JSON.
 ///

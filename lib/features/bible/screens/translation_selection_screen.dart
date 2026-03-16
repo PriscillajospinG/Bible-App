@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/service_locator.dart';
+import '../../../core/services/service_locator.dart';
 import '../widgets/translation_tile.dart';
 import 'bible_search_screen.dart';
 import 'bookmarks_screen.dart';

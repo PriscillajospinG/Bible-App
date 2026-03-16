@@ -1,4 +1,4 @@
-import '../../../ai/bible_api_service.dart';
+import '../../../ai/services/bible_api_service.dart';
 import '../../../data/repositories/bible_repository.dart';
 import '../models/verse_of_day.dart';
 

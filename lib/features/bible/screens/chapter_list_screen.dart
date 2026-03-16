@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/service_locator.dart';
+import '../../../core/services/service_locator.dart';
 import '../widgets/chapter_tile.dart';
 import 'verse_reader_screen.dart';
 

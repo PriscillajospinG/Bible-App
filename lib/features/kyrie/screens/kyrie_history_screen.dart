@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/service_locator.dart';
-import 'services/panic_history_service.dart';
+import '../../../core/services/service_locator.dart';
+import '../services/panic_history_service.dart';
 
 /// Lists all past spiritual guidance sessions stored in [PanicHistoryService].
 class PanicHistoryScreen extends StatefulWidget {

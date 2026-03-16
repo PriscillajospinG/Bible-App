@@ -1,6 +1,6 @@
-import '../data/models/bible_verse.dart';
-import '../data/models/panic_entry.dart';
-import '../data/models/panic_response.dart';
+import '../../data/models/bible_verse.dart';
+import '../../data/models/panic_entry.dart';
+import '../../data/models/panic_response.dart';
 
 class GemmaPromptBuilder {
   /// Builds a RAG-style spiritual guidance prompt using API-fetched verses.

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/service_locator.dart';
+import '../../../core/services/service_locator.dart';
 import '../../bible/screens/verse_reader_screen.dart';
 import '../../journal/models/verse_of_day.dart';
 import '../../journal/widgets/prayer_point_list.dart';
 import '../../journal/widgets/verse_of_day_card.dart';
-import '../../settings/settings_screen.dart';
-import '../services/reading_plan_service.dart';
+import '../../reading_plan/services/reading_plan_service.dart';
+import '../../settings/screens/settings_screen.dart';
 import '../services/reading_progress_service.dart';
 import '../widgets/continue_reading_card.dart';
 import '../widgets/reading_plan_progress_card.dart';

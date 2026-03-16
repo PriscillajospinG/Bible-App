@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-import '../data/models/bible_verse.dart';
+import '../../data/models/bible_verse.dart';
 import 'fallback_bible_service.dart';
 import 'verse_cache_service.dart';
 

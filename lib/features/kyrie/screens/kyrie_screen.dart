@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/service_locator.dart';
-import '../../data/models/panic_entry.dart';
-import '../../data/models/bible_verse.dart';
-import 'panic_history_screen.dart';
-import 'services/panic_guidance_service.dart';
-import 'services/text_processing_service.dart';
-import 'widgets/panic_input_field.dart';
+import '../../../core/services/service_locator.dart';
+import '../../../data/models/bible_verse.dart';
+import '../../../data/models/panic_entry.dart';
+import '../services/panic_guidance_service.dart';
+import '../services/text_processing_service.dart';
+import '../widgets/panic_input_field.dart';
+import 'kyrie_history_screen.dart';
 
 /// Main Kyrie spiritual support screen.
 ///

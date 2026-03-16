@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/service_locator.dart';
+import '../../../core/services/service_locator.dart';
 import '../widgets/book_list_tile.dart';
 import 'chapter_list_screen.dart';
 

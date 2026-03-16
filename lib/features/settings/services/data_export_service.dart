@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/service_locator.dart';
+import '../../../core/services/service_locator.dart';
 
 class DataExportService {
   /// Exports core user data to a local JSON file and returns the file path.

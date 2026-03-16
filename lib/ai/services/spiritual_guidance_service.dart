@@ -1,9 +1,9 @@
-import '../data/models/bible_verse.dart';
+import '../../data/models/bible_verse.dart';
 import 'bible_api_service.dart';
 import 'emotion_verses_repository.dart';
 import 'emotion_detection_service.dart';
 import 'gemma_model_service.dart';
-import 'gemma_prompt_builder.dart';
+import '../prompt_builders/gemma_prompt_builder.dart';
 import 'verse_cache_service.dart';
 
 /// Result returned by [SpiritualGuidanceService.generateGuidance].
