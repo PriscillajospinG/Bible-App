@@ -26,40 +26,41 @@ class GemmaModelService {
     if (_initialized) return;
 
     try {
-      debugPrint('Loading Gemma model...');
-      final modelPath = await _copyModelIfNeeded();
-      if (modelPath == null) {
-        debugPrint('Gemma model unavailable. AI features will be disabled until model is packaged.');
-        _isReady = false;
-        return;
-      }
-      final threads = Platform.numberOfProcessors.clamp(2, 8);
-
-      debugPrint('Initializing llama.cpp context...');
-      final ok = await Isolate.run(
-        () => GemmaFfi.instance.initializeModel(
-          modelPath: modelPath,
-          threads: threads,
-          contextSize: 2048,
-          batchSize: 512,
-        ),
-      );
-
-      if (!ok) {
-        debugPrint('Gemma model initialization failed. Ensure GGUF model exists and native llama.cpp is linked.');
-        _isReady = false;
-        return;
-      }
-
-      _modelFilePath = modelPath;
+      await _initNativeModel();
       _initialized = true;
       _isReady = true;
       debugPrint('Gemma model initialized successfully');
     } catch (e) {
       _isReady = false;
       _initialized = false;
-      debugPrint('Gemma initialization error: $e');
+      debugPrint('Native model unavailable, running fallback mode: $e');
     }
+  }
+
+  Future<void> _initNativeModel() async {
+    debugPrint('Loading Gemma model...');
+    final modelPath = await _copyModelIfNeeded();
+    if (modelPath == null) {
+      throw Exception('Gemma model asset unavailable');
+    }
+
+    final threads = Platform.numberOfProcessors.clamp(2, 8);
+    debugPrint('Initializing llama.cpp context...');
+
+    final ok = await Isolate.run(
+      () => GemmaFfi.instance.initializeModel(
+        modelPath: modelPath,
+        threads: threads,
+        contextSize: 2048,
+        batchSize: 512,
+      ),
+    );
+
+    if (!ok) {
+      throw Exception('Native llama.cpp initialization failed');
+    }
+
+    _modelFilePath = modelPath;
   }
 
   Future<String> rewriteStructuredResponse({
