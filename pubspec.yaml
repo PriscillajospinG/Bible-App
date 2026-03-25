@@ -34,7 +34,6 @@ flutter:
     - assets/panic/
     - assets/models/
     - assets/data/
-    - assets/bible/nlt.json
 
 flutter_launcher_icons:
   android: true

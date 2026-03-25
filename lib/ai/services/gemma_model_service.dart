@@ -14,41 +14,52 @@ class GemmaModelService {
   static const _targetFileName = 'gemma-270m.gguf';
 
   bool _initialized = false;
+  bool _isReady = false;
   String? _modelFilePath;
 
   bool get isInitialized => _initialized;
+  bool get isReady => _isReady;
 
   Future<void> initialize() => initializeModel();
 
   Future<void> initializeModel() async {
     if (_initialized) return;
 
-    debugPrint('Loading Gemma model...');
-    final modelPath = await _copyModelIfNeeded();
-    if (modelPath == null) {
-      debugPrint('Gemma model unavailable. AI features will be disabled until model is packaged.');
-      return;
+    try {
+      debugPrint('Loading Gemma model...');
+      final modelPath = await _copyModelIfNeeded();
+      if (modelPath == null) {
+        debugPrint('Gemma model unavailable. AI features will be disabled until model is packaged.');
+        _isReady = false;
+        return;
+      }
+      final threads = Platform.numberOfProcessors.clamp(2, 8);
+
+      debugPrint('Initializing llama.cpp context...');
+      final ok = await Isolate.run(
+        () => GemmaFfi.instance.initializeModel(
+          modelPath: modelPath,
+          threads: threads,
+          contextSize: 2048,
+          batchSize: 512,
+        ),
+      );
+
+      if (!ok) {
+        debugPrint('Gemma model initialization failed. Ensure GGUF model exists and native llama.cpp is linked.');
+        _isReady = false;
+        return;
+      }
+
+      _modelFilePath = modelPath;
+      _initialized = true;
+      _isReady = true;
+      debugPrint('Gemma model initialized successfully');
+    } catch (e) {
+      _isReady = false;
+      _initialized = false;
+      debugPrint('Gemma initialization error: $e');
     }
-    final threads = Platform.numberOfProcessors.clamp(2, 8);
-
-    debugPrint('Initializing llama.cpp context...');
-    final ok = await Isolate.run(
-      () => GemmaFfi.instance.initializeModel(
-        modelPath: modelPath,
-        threads: threads,
-        contextSize: 2048,
-        batchSize: 512,
-      ),
-    );
-
-    if (!ok) {
-      debugPrint('Gemma model initialization failed. Ensure GGUF model exists and native llama.cpp is linked.');
-      return;
-    }
-
-    _modelFilePath = modelPath;
-    _initialized = true;
-    debugPrint('Gemma model initialized successfully');
   }
 
   Future<String> rewriteStructuredResponse({

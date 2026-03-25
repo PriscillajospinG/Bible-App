@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/service_locator.dart';
@@ -23,6 +24,7 @@ class _TodayScreenState extends State<TodayScreen> {
   VerseOfDay? _verse;
   List<String> _prayers = [];
   bool _isLoading = true;
+  bool _hasLoadError = false;
 
   ReadingPosition? _readingPosition;
   ReadingPlanProgress? _planProgress;
@@ -39,6 +41,7 @@ class _TodayScreenState extends State<TodayScreen> {
     super.initState();
     journalRefreshNotifier.addListener(_onRefresh);
     bibleDatasetReadyNotifier.addListener(_onBibleDatasetReady);
+    bibleDatasetInitInProgressNotifier.addListener(_onBibleDatasetInitStatusChanged);
     _loadTodayData();
   }
 
@@ -46,6 +49,9 @@ class _TodayScreenState extends State<TodayScreen> {
   void dispose() {
     journalRefreshNotifier.removeListener(_onRefresh);
     bibleDatasetReadyNotifier.removeListener(_onBibleDatasetReady);
+    bibleDatasetInitInProgressNotifier.removeListener(
+      _onBibleDatasetInitStatusChanged,
+    );
     super.dispose();
   }
 
@@ -58,6 +64,11 @@ class _TodayScreenState extends State<TodayScreen> {
     }
   }
 
+  void _onBibleDatasetInitStatusChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
   static const VerseOfDay _defaultEncouragementVerse = VerseOfDay(
     reference: 'Psalm 46:10',
     text: 'Be still, and know that I am God.',
@@ -65,7 +76,38 @@ class _TodayScreenState extends State<TodayScreen> {
   );
 
   Future<void> _loadTodayData() async {
+    // Use Future.any() to add a 5-second timeout protection
     try {
+      await Future.any([
+        _loadTodayDataInternal(),
+        Future.delayed(const Duration(seconds: 5)).then(
+          (_) => throw TimeoutException(
+            'Home screen data loading timed out after 5 seconds',
+          ),
+        ),
+      ]);
+    } catch (e) {
+      debugPrint('TodayScreen: data loading timeout or error: $e');
+      if (!mounted) return;
+      setState(() {
+        _verse ??= _defaultEncouragementVerse;
+        if (_prayers.isEmpty) {
+          _prayers = const [
+          'Pause and breathe. God is with you in this moment.',
+          'Ask God for wisdom and peace for what lies ahead.',
+          'Thank Him for His faithfulness today.',
+          ];
+        }
+        _hasLoadError = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadTodayDataInternal() async {
+    try {
+      debugPrint('TodayScreen: Bible dataset ready=${bibleDatasetReadyNotifier.value}');
+      
       final latestEntry = journalRepo.getLatestEntry();
       final latestKyrie = panicHistoryService.getLatestEntry();
       final verse = await verseOfDayService.getVerseOfTheDay();
@@ -92,6 +134,7 @@ class _TodayScreenState extends State<TodayScreen> {
         _bibleReminderEnabled = reminderSettings.bibleReadingEnabled;
         _prayerReminderTime = reminderSettings.prayerTime;
         _prayerReminderEnabled = reminderSettings.prayerEnabled;
+        _hasLoadError = false;
         _isLoading = false;
       });
     } catch (e) {
@@ -104,6 +147,7 @@ class _TodayScreenState extends State<TodayScreen> {
           'Ask God for wisdom and peace for what lies ahead.',
           'Thank Him for His faithfulness today.',
         ];
+        _hasLoadError = true;
         _isLoading = false;
       });
     }
@@ -165,13 +209,61 @@ class _TodayScreenState extends State<TodayScreen> {
     final plan = _activePlan;
     final progress = _planProgress;
     final assignment = _todayAssignment;
+    final bibleReady = localBibleService.isLoaded;
+    final bibleInitInProgress = bibleDatasetInitInProgressNotifier.value;
+
+    if (_isLoading || (!bibleReady && bibleInitInProgress)) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!bibleReady && _hasLoadError) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFFDF8F0),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Unable to load full Bible data. Showing fallback verse.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF4A3728),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  VerseOfDayCard(
+                    verse: _verse ?? _defaultEncouragementVerse,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (!mounted) return;
+                      setState(() {
+                        _isLoading = true;
+                        _hasLoadError = false;
+                      });
+                      _loadTodayData();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDF8F0),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
+        child: RefreshIndicator(
                 onRefresh: _loadTodayData,
                 child: ListView(
                   padding: const EdgeInsets.only(bottom: 28),

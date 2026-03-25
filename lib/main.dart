@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -133,6 +135,7 @@ Future<void> main() async {
 }
 
 Future<void> _warmStartServices() async {
+  debugPrint('========== WARM START SERVICES BEGIN ==========');
   // Core datasets
   try {
     await panicRepo.init();
@@ -229,19 +232,24 @@ Future<void> _warmStartServices() async {
     debugPrint('Preferred translation load failed: $e');
   }
 
-  // Heavy model init in background.
+  // Heavy model init in background (non-blocking).
   aiModelInitInProgressNotifier.value = true;
-  debugPrint('Initializing Gemma...');
-  try {
-    await gemmaModelService.initializeModel();
-    aiModelReadyNotifier.value = gemmaModelService.isInitialized;
-    debugPrint('Gemma ready');
-  } catch (e) {
-    aiModelReadyNotifier.value = false;
-    debugPrint('Gemma initialization failed: $e');
-  } finally {
-    aiModelInitInProgressNotifier.value = false;
-  }
+  debugPrint('Initializing Gemma in background...');
+  unawaited(
+    gemmaModelService.initializeModel().then((_) {
+      aiModelReadyNotifier.value = gemmaModelService.isReady;
+      debugPrint('Gemma ready: ${gemmaModelService.isReady}');
+    }).catchError((Object e, StackTrace _) {
+      aiModelReadyNotifier.value = false;
+      debugPrint('Gemma initialization failed: $e');
+    }).whenComplete(() {
+      aiModelInitInProgressNotifier.value = false;
+    }),
+  );
+  
+  debugPrint('========== WARM START SERVICES COMPLETE ==========');
+  debugPrint('Bible loaded: ${bibleDatasetReadyNotifier.value}');
+  debugPrint('Gemma ready: ${gemmaModelService.isReady}');
 }
 
 class BibleApp extends StatelessWidget {
