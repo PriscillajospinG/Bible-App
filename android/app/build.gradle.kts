@@ -5,6 +5,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val enableLlama =
+    (project.findProperty("enableLlama")?.toString()?.equals("true", ignoreCase = true)
+        ?: true)
+
 android {
     namespace = "com.example.bible_app"
     compileSdk = flutter.compileSdkVersion
@@ -36,14 +40,9 @@ android {
                 cppFlags += listOf("-std=c++17")
                 arguments += listOf(
                     "-DANDROID_STL=c++_shared",
-                    "-DANDROID_ABI=arm64-v8a"
+                    "-DENABLE_LLAMA=${if (enableLlama) "ON" else "OFF"}"
                 )
             }
-        }
-
-        ndk {
-            abiFilters.clear()
-            abiFilters += listOf("arm64-v8a")
         }
 
     }

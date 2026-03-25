@@ -191,9 +191,158 @@ class _TodayScreenState extends State<TodayScreen> {
   }
 
   Future<void> _markPlanComplete() async {
-    await readingPlanService.markTodayCompleted();
+    final completedNow = await readingPlanService.markTodayCompleted();
     if (!mounted) return;
     await _loadTodayData();
+
+    if (!mounted || !completedNow) return;
+    final shouldShow = await readingPlanService.shouldShowCompletionPopup();
+    if (!mounted || !shouldShow) return;
+
+    await readingPlanService.markCompletionPopupShown();
+    if (!mounted) return;
+    await _showReadingPlanCompletedDialog();
+  }
+
+  Future<void> _showReadingPlanCompletedDialog() async {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    await showGeneralDialog<void>(
+      context: context,
+      barrierLabel: 'Reading Plan Completed',
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      transitionBuilder: (context, animation, _, __) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
+            child: Dialog(
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFFF8EE), Color(0xFFF7E8D0)],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFE7CFA8), width: 1.2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 22,
+                      offset: Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF1D6),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Icon(
+                          Icons.emoji_events_rounded,
+                          size: 42,
+                          color: Color(0xFF8A5A2B),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Well done!',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF3B2A1A),
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'You have completed your Bible reading plan.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.35,
+                          color: Colors.brown.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.72),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE7D8C0)),
+                        ),
+                        child: const Column(
+                          children: [
+                            Text(
+                              '2 Timothy 3:16',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF4A3728),
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'All Scripture is God-breathed and is useful for teaching, rebuking, correcting and training in righteousness.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                height: 1.35,
+                                color: Color(0xFF5A4637),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF6B4226),
+                            foregroundColor: colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text(
+                            'Continue',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   String _greeting() {

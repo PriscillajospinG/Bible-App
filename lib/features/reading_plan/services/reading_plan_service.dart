@@ -73,6 +73,7 @@ class ReadingPlanService {
 
   static const _progressKey = 'reading_plan_progress';
   static const _customPlanDaysKey = 'reading_plan_custom_days';
+  static const _completionPopupShownKey = 'reading_plan_completion_popup_shown';
 
   static const int _defaultCustomDays = 120;
   static const List<int> _presetDays = [30, 90, 180, 365];
@@ -132,6 +133,7 @@ class ReadingPlanService {
     final current = await getProgress();
     if (current.planName == planName) return false;
     await _save(ReadingPlanProgress(planName: planName, completedDays: 0));
+    await resetCompletionPopupState();
     return true;
   }
 
@@ -176,13 +178,44 @@ class ReadingPlanService {
     return progress.completedDays / plan.totalDays;
   }
 
-  Future<void> markTodayCompleted() async {
+  Future<bool> markTodayCompleted() async {
     final progress = await getProgress();
     final plan = getPlanByName(progress.planName);
+    final wasCompleted = isPlanCompleted(progress: progress, plan: plan);
     final nextDays = (progress.completedDays + 1).clamp(0, plan.totalDays);
     await _save(
       ReadingPlanProgress(planName: progress.planName, completedDays: nextDays),
     );
+
+    final completedNow = nextDays >= plan.totalDays;
+    return !wasCompleted && completedNow;
+  }
+
+  bool isPlanCompleted({
+    required ReadingPlanProgress progress,
+    required ReadingPlan plan,
+  }) {
+    return progress.completedDays >= plan.totalDays;
+  }
+
+  Future<bool> shouldShowCompletionPopup() async {
+    final prefs = await SharedPreferences.getInstance();
+    final alreadyShown = prefs.getBool(_completionPopupShownKey) ?? false;
+    if (alreadyShown) return false;
+
+    final progress = await getProgress();
+    final plan = getPlanByName(progress.planName);
+    return isPlanCompleted(progress: progress, plan: plan);
+  }
+
+  Future<void> markCompletionPopupShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_completionPopupShownKey, true);
+  }
+
+  Future<void> resetCompletionPopupState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_completionPopupShownKey);
   }
 
   List<ReadingAssignment> _buildCanonicalAssignments() {
