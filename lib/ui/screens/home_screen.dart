@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/services/service_locator.dart';
@@ -28,6 +30,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  bool _isLoaded = false;
 
   final _todayNavKey = GlobalKey<NavigatorState>();
   final _bibleNavKey = GlobalKey<NavigatorState>();
@@ -39,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     tabSwitchRequest.addListener(_onTabSwitchRequest);
-    _loadModelAsync();
+    _initializeApp();
   }
 
   @override
@@ -56,21 +59,42 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadModelAsync() async {
-    if (aiModelReadyNotifier.value || aiModelInitInProgressNotifier.value) {
-      return;
+  Future<void> _initializeApp() async {
+    debugPrint('Starting background initialization...');
+    bibleDatasetInitInProgressNotifier.value = true;
+
+    try {
+      final bibleLoadFuture = localBibleService.loadBible().then((_) {
+        bibleDatasetReadyNotifier.value = localBibleService.isLoaded;
+      });
+
+      await Future.any([
+        bibleLoadFuture,
+        Future.delayed(const Duration(seconds: 5)),
+      ]);
+    } catch (e) {
+      debugPrint('Initialization error: $e');
+    } finally {
+      bibleDatasetReadyNotifier.value = localBibleService.isLoaded;
+      bibleDatasetInitInProgressNotifier.value = false;
     }
 
     aiModelInitInProgressNotifier.value = true;
-    try {
-      await gemmaModelService.initializeModel();
-      aiModelReadyNotifier.value = gemmaModelService.isInitialized;
-    } catch (e) {
-      aiModelReadyNotifier.value = false;
-      debugPrint('Gemma background initialization failed: $e');
-    } finally {
-      aiModelInitInProgressNotifier.value = false;
-    }
+    unawaited(
+      gemmaModelService.initializeModel().then((_) {
+        aiModelReadyNotifier.value = gemmaModelService.isReady;
+      }).catchError((Object e, StackTrace _) {
+        aiModelReadyNotifier.value = false;
+        debugPrint('Gemma background initialization failed: $e');
+      }).whenComplete(() {
+        aiModelInitInProgressNotifier.value = false;
+      }),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isLoaded = true;
+    });
   }
 
   // ── Android back-button handling ───────────────────────────────────────────
@@ -92,17 +116,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isLoaded) {
+      return const Scaffold(
+        body: SafeArea(
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return ValueListenableBuilder<bool>(
       valueListenable: bibleDatasetInitInProgressNotifier,
       builder: (_, bibleLoading, __) {
-        if (!localBibleService.isLoaded && bibleLoading) {
-          return const Scaffold(
-            body: SafeArea(
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          );
-        }
-
         return PopScope(
           canPop: false,
           onPopInvoked: (didPop) async {

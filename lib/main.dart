@@ -34,7 +34,7 @@ import 'features/kyrie/services/panic_guidance_service.dart';
 import 'features/kyrie/services/semantic_panic_search_service.dart';
 import 'routes/app_router.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   debugPrint('App started');
 
@@ -199,16 +199,6 @@ Future<void> _warmStartServices() async {
     debugPrint('Panic history init failed: $e');
   }
 
-  // Bible dataset in safe background load.
-  bibleDatasetInitInProgressNotifier.value = true;
-  debugPrint('Loading Bible dataset...');
-  await localBibleService.loadBible();
-  bibleDatasetReadyNotifier.value = localBibleService.isLoaded;
-  bibleDatasetInitInProgressNotifier.value = false;
-  debugPrint(localBibleService.isLoaded
-      ? 'Bible dataset loaded'
-      : 'Bible dataset failed, using fallback verse');
-
   // Sync plan after settings are loaded.
   try {
     await readingPlanService.selectPlan(settingsService.selectedReadingPlan);
@@ -223,23 +213,11 @@ Future<void> _warmStartServices() async {
     debugPrint('Preferred translation load failed: $e');
   }
 
-  // Heavy model init in background (non-blocking).
-  aiModelInitInProgressNotifier.value = true;
-  debugPrint('Initializing Gemma in background...');
-  unawaited(
-    gemmaModelService.initializeModel().then((_) {
-      aiModelReadyNotifier.value = gemmaModelService.isReady;
-      debugPrint('Gemma ready: ${gemmaModelService.isReady}');
-    }).catchError((Object e, StackTrace _) {
-      aiModelReadyNotifier.value = false;
-      debugPrint('Gemma initialization failed: $e');
-    }).whenComplete(() {
-      aiModelInitInProgressNotifier.value = false;
-    }),
-  );
-  
+  // Heavy Bible/model initialization is triggered by HomeScreen in background
+  // with timeout protection, so startup is never blocked.
+
   debugPrint('========== WARM START SERVICES COMPLETE ==========');
-  debugPrint('Bible loaded: ${bibleDatasetReadyNotifier.value}');
+  debugPrint('Bible loaded: ${localBibleService.isLoaded}');
   debugPrint('Gemma ready: ${gemmaModelService.isReady}');
 }
 
