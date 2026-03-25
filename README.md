@@ -101,9 +101,8 @@ assets/
 
 1. Clone the repository
 2. Install Flutter dependencies
-3. Add required environment variables
-4. Add the Gemma model file
-5. Run the app
+3. Add the Gemma model file
+4. Run the app
 
 ```bash
 git clone <repo-url>
@@ -114,11 +113,7 @@ flutter run
 
 ## Environment Variables
 
-Create a local .env file (already referenced in assets) and add the required keys, for example:
-
-```env
-BIBLE_API_KEY=your_api_key_here
-```
+No environment variables are required. The app is designed to run fully offline using bundled local assets.
 
 ## AI Model Setup
 

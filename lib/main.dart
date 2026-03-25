@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 import 'ai/services/gemma_model_service.dart';
 import 'ai/services/emotion_detection_service.dart';
 import 'ai/services/emotion_verses_repository.dart';
@@ -39,13 +37,6 @@ import 'routes/app_router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   debugPrint('App started');
-
-  // Load environment variables from .env asset.
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    debugPrint('dotenv load failed (continuing without env vars): $e');
-  }
 
   // Wire up service instances first so the UI can render immediately.
   panicDatasetService = PanicDatasetService();
